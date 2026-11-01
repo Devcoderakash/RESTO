@@ -25,6 +25,11 @@ services:
     rootDir: frontend
     buildCommand: "npm install && npm run build"
     staticPublishPath: "dist"
+    envVars:
+      - key: VITE_API_URL
+        value: "https://resto-vc53.onrender.com/api"
+      - key: VITE_RESTAURANT_SLUG
+        value: "olive-and-ember"
     routes:
       - type: rewrite
         source: "/*"
@@ -37,7 +42,13 @@ services:
     rootDir: dashboard
     buildCommand: "npm install && npm run build"
     staticPublishPath: "dist"
+    envVars:
+      - key: VITE_API_URL
+        value: "https://resto-vc53.onrender.com/api"
+      - key: VITE_RESTAURANT_SLUG
+        value: "olive-and-ember"
     routes:
       - type: rewrite
         source: "/*"
         destination: "/index.html"
+
