@@ -28,66 +28,82 @@ export const RestaurantHeader: React.FC<RestaurantHeaderProps> = ({
   const totalCount = getTotalCount()
 
   return (
-    <header className="sticky top-0 z-30 w-full bg-white/95 backdrop-blur-md border-b border-[#E9E4DA] shadow-2xs">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
-        {/* Left: Restaurant Name */}
-        <Link to="/menu" className="flex items-center gap-2.5 shrink-0">
-          <div className="w-9 h-9 rounded-xl bg-[#22211F] text-[#B99A62] flex items-center justify-center">
-            <UtensilsCrossed className="w-5 h-5" />
+    <header className="sticky top-0 z-30 w-full bg-white/90 backdrop-blur-md border-b border-beige/90 transition-all">
+      <div className="max-w-6xl mx-auto px-3.5 sm:px-6 h-15 sm:h-16 flex items-center justify-between gap-2 sm:gap-4">
+        {/* Left: Restaurant Brand */}
+        <Link
+          to="/menu"
+          className="flex items-center gap-2 sm:gap-2.5 shrink-0 group active:scale-[0.98] transition-transform"
+        >
+          <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-charcoal text-gold flex items-center justify-center shadow-xs group-hover:bg-emerald transition-colors">
+            <UtensilsCrossed className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
           </div>
           <div>
-            <span className="font-serif font-bold text-base sm:text-lg text-[#22211F] tracking-tight block leading-tight">
+            <span className="font-serif font-bold text-sm sm:text-base text-charcoal tracking-tight block leading-tight">
               {restaurantInfo?.name || 'The Olive & Ember'}
+            </span>
+            <span className="hidden sm:block text-[10px] text-charcoal-600 font-medium">
+              Digital Dining Table Service
             </span>
           </div>
         </Link>
 
-        {/* Center: Selected Table with Change action */}
+        {/* Center: Table Badge with Quick Change */}
         <div className="flex items-center">
           <Link
             to="/select-table"
-            className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#FAF6EE] border border-[#DCBD86]/50 text-xs font-medium text-[#22211F] hover:bg-[#F5ECDB] transition-colors"
-            title="Click to change table"
+            className="inline-flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-full bg-cream-100 hover:bg-gold-50 border border-beige hover:border-gold-300 transition-all text-xs text-charcoal active:scale-95"
+            title="Tap to switch dining table"
           >
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span>Table <strong className="font-bold text-[#B99A62]">{currentTable || '01'}</strong></span>
-            <span className="text-[10px] text-[#77736D] underline ml-1">Change</span>
+            <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-emerald-600 animate-pulse" />
+            <span className="text-[11px] sm:text-xs">
+              Table <strong className="font-bold text-charcoal">{currentTable || '01'}</strong>
+            </span>
+            <span className="text-[9px] sm:text-[10px] font-semibold text-gold-700 underline uppercase tracking-wider ml-0.5">
+              Change
+            </span>
           </Link>
         </div>
 
-        {/* Right: Wi-Fi, Call Waiter, Cart */}
-        <div className="flex items-center gap-2 sm:gap-2.5">
-          {/* Wi-Fi button */}
+        {/* Right Actions: Wi-Fi, Call Waiter, Cart */}
+        <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+          {/* Wi-Fi Action */}
           <button
             onClick={onOpenWifiModal}
-            className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-[#22211F] bg-[#FAF8F3] hover:bg-[#F0ECE1] rounded-xl border border-[#E9E4DA] transition-colors"
-            title="Wi-Fi Details"
+            className="p-2 sm:px-3 sm:py-2 text-xs font-medium text-charcoal-700 bg-cream-50 hover:bg-cream-200/70 rounded-xl border border-beige/80 transition-colors flex items-center gap-1.5 active:scale-95"
+            title="Wi-Fi Network & Password"
+            aria-label="View Wi-Fi details"
           >
-            <Wifi className="w-4 h-4 text-[#B99A62]" />
-            <span className="hidden sm:inline">Wi-Fi</span>
+            <Wifi className="w-4 h-4 text-gold-700" />
+            <span className="hidden md:inline">Wi-Fi</span>
           </button>
 
           {/* Call Waiter */}
           <button
             onClick={onOpenCallWaiterModal}
-            className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-[#22211F] bg-[#FAF8F3] hover:bg-[#F0ECE1] rounded-xl border border-[#E9E4DA] transition-colors"
-            title="Call table waiter"
+            className="p-2 sm:px-3 sm:py-2 text-xs font-medium text-charcoal-700 bg-cream-50 hover:bg-cream-200/70 rounded-xl border border-beige/80 transition-colors flex items-center gap-1.5 active:scale-95"
+            title="Call server or request assistance"
+            aria-label="Call Waiter"
           >
-            <BellRing className="w-4 h-4 text-[#B99A62]" />
-            <span className="hidden sm:inline">Call Waiter</span>
+            <BellRing className="w-4 h-4 text-gold-700" />
+            <span className="hidden md:inline">Call Waiter</span>
           </button>
 
-          {/* Cart button */}
+          {/* Cart Button with Count Badge */}
           <button
             onClick={openDrawer}
-            className="relative flex items-center gap-2 px-3.5 py-2 bg-[#22211F] text-white hover:bg-[#33312E] rounded-xl text-xs font-semibold shadow-xs transition-all active:scale-95"
-            aria-label="View Cart"
+            className="relative flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 bg-charcoal text-white hover:bg-emerald rounded-xl text-xs sm:text-sm font-semibold shadow-xs transition-all active:scale-95"
+            aria-label={`Open Cart (${totalCount} items)`}
           >
-            <ShoppingBag className="w-4 h-4 text-[#B99A62]" />
-            <span>Cart</span>
-            {totalCount > 0 && (
-              <span className="w-5 h-5 rounded-full bg-[#B99A62] text-white text-[11px] font-bold flex items-center justify-center -mr-1">
+            <ShoppingBag className="w-4 h-4 text-gold" />
+            <span className="hidden sm:inline">Cart</span>
+            {totalCount > 0 ? (
+              <span className="w-5 h-5 rounded-full bg-gold text-charcoal text-[11px] font-bold flex items-center justify-center -mr-1 animate-in zoom-in-75">
                 {totalCount}
+              </span>
+            ) : (
+              <span className="hidden sm:inline text-charcoal-200/70 text-xs font-normal">
+                (0)
               </span>
             )}
           </button>

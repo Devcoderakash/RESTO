@@ -49,24 +49,18 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({ onMobileMenuToggle }) => {
   // Derive human-readable page title and breadcrumbs from location
   const getPageInfo = () => {
     const path = location.pathname
-    if (path === '/') return { title: 'Overview Dashboard', category: 'Main' }
-    if (path === '/orders') return { title: 'Order Management', category: 'Main' }
-    if (path === '/tables') return { title: 'Table Management', category: 'Main' }
-    if (path === '/menu') return { title: 'Menu Management', category: 'Main' }
-    if (path === '/categories') return { title: 'Category Management', category: 'Main' }
-    if (path === '/staff') return { title: 'Staff Management', category: 'Management' }
-    if (path === '/customers') return { title: 'Customer Directory', category: 'Management' }
-    if (path === '/payments') return { title: 'Payment Transactions', category: 'Management' }
-    if (path === '/inventory') return { title: 'Inventory & Supplies', category: 'Management' }
-    if (path === '/offers') return { title: 'Offers & Coupons', category: 'Management' }
-    if (path === '/reports') return { title: 'Reports & Analytics', category: 'Analytics' }
-    if (path === '/reviews') return { title: 'Customer Reviews', category: 'Analytics' }
+    if (path === '/' || path === '/orders') return { title: 'Live Orders', category: 'Operations' }
+    if (path === '/tables') return { title: 'Table Management', category: 'Floor' }
+    if (path === '/menu') return { title: 'Menu Management', category: 'Catalog' }
+    if (path === '/categories') return { title: 'Category Management', category: 'Catalog' }
+    if (path === '/payments') return { title: 'Payment Transactions', category: 'Finance' }
+    if (path === '/waiter') return { title: 'Waiter Requests', category: 'Floor Service' }
+    if (path === '/chef') return { title: 'Kitchen Display', category: 'Culinary' }
     if (path === '/settings') {
       if (location.search.includes('tab=wifi')) return { title: 'Wi-Fi Settings', category: 'Settings' }
-      if (location.search.includes('tab=account')) return { title: 'Account Settings', category: 'Settings' }
       return { title: 'Restaurant Settings', category: 'Settings' }
     }
-    return { title: 'Dashboard', category: 'DineFlow' }
+    return { title: 'Restaurant OS', category: 'RESTO' }
   }
 
   const { title, category } = getPageInfo()

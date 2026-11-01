@@ -66,7 +66,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       title: 'OPERATIONS',
       items: [
         {
-          label: 'Orders',
+          label: 'Live Orders',
           to: '/',
           icon: ShoppingBag,
           badge: pendingOrdersCount > 0 ? pendingOrdersCount : undefined,
@@ -79,16 +79,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
           badge: pendingRequestsCount > 0 ? pendingRequestsCount : undefined,
           badgeColor: 'bg-amber-500 text-white font-bold',
         },
-        { label: 'Tables', to: '/tables', icon: Grid3X3 },
-        { label: 'Menu', to: '/menu', icon: UtensilsCrossed },
+        { label: 'Floor Tables', to: '/tables', icon: Grid3X3 },
+        { label: 'Menu Catalog', to: '/menu', icon: UtensilsCrossed },
+        { label: 'Categories', to: '/categories', icon: Layers },
         { label: 'Payments', to: '/payments', icon: CreditCard },
       ],
     },
     {
       title: 'STAFF SCREENS',
       items: [
-        { label: 'Chef Kitchen', to: '/chef', icon: Flame },
-        { label: 'Waiter Service', to: '/waiter', icon: UserCheck },
+        { label: 'Kitchen KDS', to: '/chef', icon: Flame },
+        { label: 'Settings', to: '/settings', icon: Settings },
       ],
     },
   ]
@@ -103,18 +104,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
           className="flex items-center gap-3 group focus:outline-none"
         >
           <div className="w-9 h-9 rounded-xl bg-brand flex items-center justify-center text-sidebar shadow-md shadow-brand/20 group-hover:scale-105 transition-transform">
-            <Flame className="w-5 h-5 fill-sidebar" />
+            <UtensilsCrossed className="w-5 h-5 text-sidebar stroke-[2.2]" />
           </div>
           {!isCollapsed && (
             <div className="flex flex-col">
               <span className="font-serif text-xl font-bold tracking-tight text-white flex items-center gap-1.5">
-                DineFlow
+                RESTO
                 <span className="text-[10px] uppercase font-sans font-semibold tracking-wider px-1.5 py-0.5 rounded bg-brand/20 text-brand border border-brand/30">
                   PRO
                 </span>
               </span>
               <span className="text-[11px] text-sidebar-muted -mt-0.5 font-sans">
-                Restaurant OS
+                Hospitality OS
               </span>
             </div>
           )}

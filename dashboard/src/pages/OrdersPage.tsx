@@ -12,11 +12,11 @@ import {
   CheckCircle2,
   BellRing,
   Check,
+  UtensilsCrossed,
 } from 'lucide-react'
 import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
 import { Select } from '../components/ui/Select'
-import { Tabs } from '../components/ui/Tabs'
 import { Card } from '../components/ui/Card'
 import { OrderStatusBadge } from '../components/orders/OrderStatusBadge'
 import { OrderDetailDrawer } from '../components/orders/OrderDetailDrawer'
@@ -36,11 +36,9 @@ export const OrdersPage: React.FC = () => {
     searchQuery,
     statusFilter,
     tableFilter,
-    dateFilter,
     setSearchQuery,
     setStatusFilter,
     setTableFilter,
-    setDateFilter,
     updateOrderStatus,
     updatePaymentStatus,
     cancelOrder,
@@ -61,31 +59,31 @@ export const OrdersPage: React.FC = () => {
         return {
           label: 'Accept Order',
           nextStatus: 'Accepted' as OrderStatus,
-          className: 'bg-brand text-sidebar hover:bg-brand-600',
+          className: 'bg-amber-600 text-white hover:bg-amber-700',
         }
       case 'Accepted':
         return {
           label: 'Start Preparing',
           nextStatus: 'Preparing' as OrderStatus,
-          className: 'bg-amber-600 text-white hover:bg-amber-700',
+          className: 'bg-orange-600 text-white hover:bg-orange-700',
         }
       case 'Preparing':
         return {
           label: 'Mark Ready',
           nextStatus: 'Ready' as OrderStatus,
-          className: 'bg-indigo-600 text-white hover:bg-indigo-700',
+          className: 'bg-purple-600 text-white hover:bg-purple-700',
         }
       case 'Ready':
         return {
           label: 'Mark Served',
           nextStatus: 'Served' as OrderStatus,
-          className: 'bg-emerald-600 text-white hover:bg-emerald-700',
+          className: 'bg-emerald-700 text-white hover:bg-emerald-800',
         }
       case 'Served':
         return {
           label: 'Complete Order',
           nextStatus: 'Completed' as OrderStatus,
-          className: 'bg-charcoal text-white hover:bg-charcoal-800',
+          className: 'bg-charcoal text-white hover:bg-charcoal-900',
         }
       default:
         return null
@@ -101,7 +99,6 @@ export const OrdersPage: React.FC = () => {
     }
   }
 
-  // Status Tabs
   const statusTabs = [
     { id: 'ALL', label: 'All Orders', count: orders.length },
     { id: 'New', label: 'New', count: orders.filter((o) => o.orderStatus === 'New').length },
@@ -113,34 +110,20 @@ export const OrdersPage: React.FC = () => {
     { id: 'Cancelled', label: 'Cancelled', count: orders.filter((o) => o.orderStatus === 'Cancelled').length },
   ]
 
-  // Filtered orders list
   const filteredOrders = orders.filter((order) => {
-    // Status Filter
-    if (statusFilter !== 'ALL' && order.orderStatus !== statusFilter) {
-      return false
-    }
-
-    // Table Filter
-    if (tableFilter !== 'ALL' && order.tableNumber !== tableFilter) {
-      return false
-    }
-
-    // Search Query
+    if (statusFilter !== 'ALL' && order.orderStatus !== statusFilter) return false
+    if (tableFilter !== 'ALL' && order.tableNumber !== tableFilter) return false
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase()
       const matchesId = order.id.toLowerCase().includes(q)
       const matchesCustomer = order.customerName.toLowerCase().includes(q)
       const matchesTable = order.tableNumber.includes(q)
       const matchesItem = order.items.some((i) => i.name.toLowerCase().includes(q))
-      if (!matchesId && !matchesCustomer && !matchesTable && !matchesItem) {
-        return false
-      }
+      if (!matchesId && !matchesCustomer && !matchesTable && !matchesItem) return false
     }
-
     return true
   })
 
-  // Unique table numbers for filter
   const tableNumbers = Array.from(new Set(orders.map((o) => o.tableNumber))).sort()
 
   const handleExportCSV = () => {
@@ -181,15 +164,15 @@ export const OrdersPage: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-300">
-      {/* Top Header & Export */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="space-y-5 animate-in fade-in duration-200">
+      {/* Top Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h2 className="text-xl sm:text-2xl font-bold font-serif text-charcoal">
-            Order Management
+          <h2 className="text-xl sm:text-2xl font-bold font-serif text-charcoal tracking-tight">
+            Live Table Orders
           </h2>
-          <p className="text-xs sm:text-sm text-charcoal-muted mt-0.5">
-            Real-time feed of live dining tickets, kitchen preparation, and customer settlements.
+          <p className="text-xs text-charcoal-muted mt-0.5">
+            Real-time feed of kitchen tickets, table deliveries, and settlements.
           </p>
         </div>
 
@@ -197,129 +180,157 @@ export const OrdersPage: React.FC = () => {
           <Button
             variant="outline"
             size="sm"
-            leftIcon={<Download className="w-4 h-4" />}
+            leftIcon={<Download className="w-3.5 h-3.5" />}
             onClick={handleExportCSV}
+            className="text-xs font-semibold"
           >
-            Export Orders (CSV)
+            Export CSV
           </Button>
         </div>
       </div>
 
-      {/* Live Waiter Requests Banner if any pending */}
+      {/* Live Waiter Requests Alert Banner */}
       {(activeTableRequests.length > 0 || activeBillRequests.length > 0) && (
-        <Card className="p-4 sm:p-5 border-amber-300 bg-amber-50/60 shadow-sm">
-          <div className="flex items-center justify-between mb-3">
+        <div className="p-4 rounded-2xl border border-amber-300 bg-amber-50/80 shadow-soft">
+          <div className="flex items-center justify-between mb-2.5">
             <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-ping" />
-              <h3 className="text-sm font-bold text-charcoal flex items-center gap-1.5">
-                <BellRing className="w-4 h-4 text-amber-600" />
-                Active Table Service Requests ({activeTableRequests.length + activeBillRequests.length})
+              <span className="w-2.5 h-2.5 rounded-full bg-amber-600 animate-ping" />
+              <h3 className="text-xs sm:text-sm font-bold text-charcoal flex items-center gap-1.5">
+                <BellRing className="w-4 h-4 text-amber-700" />
+                Active Table Requests ({activeTableRequests.length + activeBillRequests.length})
               </h3>
             </div>
-            <span className="text-xs text-charcoal-muted">Requires waiter attention</span>
+            <span className="text-[11px] text-amber-900 font-medium">Requires server attention</span>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
             {activeTableRequests.map((req) => (
-              <div key={req.id} className="p-3 bg-white rounded-xl border border-amber-200 shadow-2xs flex items-center justify-between gap-3">
+              <div
+                key={req.id}
+                className="p-3 bg-white rounded-xl border border-amber-200 shadow-2xs flex items-center justify-between gap-3"
+              >
                 <div>
                   <span className="font-bold text-xs text-charcoal block">
                     Table {req.tableNumber} • {req.details || req.type}
                   </span>
                   <span className="text-[10px] text-charcoal-muted">{formatTime(req.time)}</span>
                 </div>
-                <Button
-                  size="sm"
-                  variant="outline"
+                <button
+                  type="button"
                   onClick={() => completeTableRequest(req.id)}
-                  className="bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100 text-xs py-1 px-2.5 shrink-0"
+                  className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-100 text-[11px] font-bold shrink-0 flex items-center gap-1 active:scale-95 transition-all"
                 >
-                  <Check className="w-3.5 h-3.5 mr-1" />
-                  Mark Handled
-                </Button>
+                  <Check className="w-3 h-3 stroke-[3]" />
+                  <span>Handled</span>
+                </button>
               </div>
             ))}
+
             {activeBillRequests.map((req) => (
-              <div key={req.id} className="p-3 bg-white rounded-xl border border-amber-200 shadow-2xs flex items-center justify-between gap-3">
+              <div
+                key={req.id}
+                className="p-3 bg-white rounded-xl border border-amber-200 shadow-2xs flex items-center justify-between gap-3"
+              >
                 <div>
                   <span className="font-bold text-xs text-charcoal block">
                     Table {req.tableNumber} • Bill Requested ({req.paymentPreference.toUpperCase()})
                   </span>
                   <span className="text-[10px] text-charcoal-muted">{formatTime(req.time)}</span>
                 </div>
-                <Button
-                  size="sm"
-                  variant="outline"
+                <button
+                  type="button"
                   onClick={() => completeBillRequest(req.id)}
-                  className="bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100 text-xs py-1 px-2.5 shrink-0"
+                  className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-100 text-[11px] font-bold shrink-0 flex items-center gap-1 active:scale-95 transition-all"
                 >
-                  <Check className="w-3.5 h-3.5 mr-1" />
-                  Mark Handled
-                </Button>
+                  <Check className="w-3 h-3 stroke-[3]" />
+                  <span>Handled</span>
+                </button>
               </div>
             ))}
           </div>
-        </Card>
+        </div>
       )}
 
-      {/* Filter Tabs */}
-      <Tabs
-        tabs={statusTabs}
-        activeTab={statusFilter}
-        onChange={setStatusFilter}
-        variant="pills"
-      />
+      {/* Filter and Tab Rail */}
+      <div className="space-y-3">
+        {/* Horizontal Status Filter Tabs */}
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1">
+          {statusTabs.map((tab) => {
+            const isActive = statusFilter === tab.id
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setStatusFilter(tab.id)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all duration-200 flex items-center gap-1.5 active:scale-95 ${
+                  isActive
+                    ? 'bg-charcoal text-white shadow-xs'
+                    : 'bg-white text-charcoal-muted border border-beige hover:bg-cream-50 hover:text-charcoal'
+                }`}
+              >
+                <span>{tab.label}</span>
+                <span
+                  className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+                    isActive ? 'bg-white/20 text-white' : 'bg-canvas text-charcoal'
+                  }`}
+                >
+                  {tab.count}
+                </span>
+              </button>
+            )
+          })}
+        </div>
 
-      {/* Search & Filter Toolbar */}
-      <Card className="p-4">
-        <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3">
-          <div className="flex-1">
-            <Input
-              placeholder="Search by Order ID, guest name, table, dish..."
+        {/* Search & Table Select Row */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
+          <div className="relative flex-1">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-charcoal-muted/70" />
+            <input
+              type="text"
+              placeholder="Search by Order ID, Table #, Guest name, or dish..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              leftIcon={<Search className="w-4 h-4" />}
+              className="w-full pl-10 pr-4 py-2 rounded-xl border border-beige bg-white text-xs sm:text-sm placeholder:text-charcoal-muted/50 focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand shadow-2xs"
             />
           </div>
 
-          <div className="flex items-center gap-2">
-            <div className="w-40">
-              <Select
-                value={tableFilter}
-                onChange={(e) => setTableFilter(e.target.value)}
-              >
-                <option value="ALL">All Tables</option>
-                {tableNumbers.map((tbl) => (
-                  <option key={tbl} value={tbl}>
-                    Table {tbl}
-                  </option>
-                ))}
-              </Select>
-            </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <select
+              value={tableFilter}
+              onChange={(e) => setTableFilter(e.target.value)}
+              className="px-3 py-2 rounded-xl border border-beige bg-white text-xs font-semibold text-charcoal shadow-2xs focus:outline-none cursor-pointer"
+            >
+              <option value="ALL">All Tables</option>
+              {tableNumbers.map((tbl) => (
+                <option key={tbl} value={tbl}>
+                  Table {tbl}
+                </option>
+              ))}
+            </select>
 
             {(searchQuery || statusFilter !== 'ALL' || tableFilter !== 'ALL') && (
-              <Button
-                variant="ghost"
-                size="sm"
+              <button
                 onClick={() => {
                   setSearchQuery('')
                   setStatusFilter('ALL')
                   setTableFilter('ALL')
                 }}
-                leftIcon={<RotateCcw className="w-3.5 h-3.5" />}
+                className="px-2.5 py-2 rounded-xl text-xs font-semibold text-charcoal-muted hover:text-charcoal hover:bg-white border border-beige transition-colors flex items-center gap-1"
+                title="Reset active filters"
               >
-                Reset
-              </Button>
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Reset</span>
+              </button>
             )}
           </div>
         </div>
-      </Card>
+      </div>
 
-      {/* Order Table */}
+      {/* Orders List: Dual Desktop Table & Mobile Card Stack */}
       {filteredOrders.length === 0 ? (
         <EmptyState
-          title="No orders found"
-          description="Try adjusting your status tabs or clearing search filters to see all tickets."
-          actionLabel="Reset Filters"
+          title="No table orders found"
+          description="Try adjusting your status filter or clearing search keywords to see all tickets."
+          actionLabel="Clear Filters"
           onAction={() => {
             setSearchQuery('')
             setStatusFilter('ALL')
@@ -327,117 +338,200 @@ export const OrdersPage: React.FC = () => {
           }}
         />
       ) : (
-        <Card className="overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-canvas/70 text-charcoal-muted uppercase text-[10px] tracking-wider border-b border-beige">
-                <tr>
-                  <th className="py-3.5 px-5 font-semibold">Order ID</th>
-                  <th className="py-3.5 px-4 font-semibold">Table</th>
-                  <th className="py-3.5 px-4 font-semibold">Customer</th>
-                  <th className="py-3.5 px-4 font-semibold">Items Summary</th>
-                  <th className="py-3.5 px-4 font-semibold">Amount</th>
-                  <th className="py-3.5 px-4 font-semibold">Payment</th>
-                  <th className="py-3.5 px-4 font-semibold">Time</th>
-                  <th className="py-3.5 px-4 font-semibold">Status</th>
-                  <th className="py-3.5 px-5 font-semibold text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-beige/60">
-                {filteredOrders.map((order) => {
-                  const payBadge = getStatusBadgeStyles(order.paymentStatus)
-                  return (
-                    <tr
-                      key={order.id}
-                      className="hover:bg-canvas/40 transition-colors group cursor-pointer"
-                      onClick={() => handleViewDetails(order)}
-                    >
-                      <td className="py-4 px-5 font-bold text-charcoal font-mono">
-                        {order.id}
-                      </td>
-                      <td className="py-4 px-4">
-                        <span className="font-semibold text-charcoal px-2 py-0.5 rounded-lg bg-beige-light border border-beige">
-                          T-{order.tableNumber}
+        <>
+          {/* MOBILE & TABLET CARD STACK (lg:hidden) */}
+          <div className="space-y-3.5 lg:hidden">
+            {filteredOrders.map((order) => {
+              const payBadge = getStatusBadgeStyles(order.paymentStatus)
+              const action = getNextStatusAction(order)
+
+              return (
+                <div
+                  key={order.id}
+                  onClick={() => handleViewDetails(order)}
+                  className="p-4 rounded-2xl bg-white border border-beige shadow-soft hover:shadow-medium transition-all active:scale-[0.99] cursor-pointer space-y-3"
+                >
+                  {/* Card Header */}
+                  <div className="flex items-center justify-between gap-2 border-b border-beige/60 pb-2.5">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono font-bold text-xs text-charcoal">
+                        #{order.id}
+                      </span>
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-cream-100 text-charcoal border border-beige">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" />
+                        Table {order.tableNumber}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] text-charcoal-muted">
+                        {formatTime(order.createdAt)}
+                      </span>
+                      <OrderStatusBadge status={order.orderStatus} />
+                    </div>
+                  </div>
+
+                  {/* Items summary */}
+                  <div className="space-y-1">
+                    <div className="text-xs font-semibold text-charcoal">
+                      {order.customerName}
+                    </div>
+                    <p className="text-xs text-charcoal-muted leading-relaxed line-clamp-2">
+                      {order.items.map((i) => `${i.quantity}× ${i.name}`).join(', ')}
+                    </p>
+                  </div>
+
+                  {/* Financial & Status Action */}
+                  <div className="pt-2 border-t border-beige/60 flex items-center justify-between gap-3">
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-charcoal-muted block">
+                        Total Amount
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-serif font-bold text-sm text-charcoal">
+                          {formatCurrency(order.total)}
                         </span>
-                      </td>
-                      <td className="py-4 px-4 font-medium text-charcoal">
-                        {order.customerName}
-                      </td>
-                      <td className="py-4 px-4 text-charcoal-muted max-w-[220px] truncate">
-                        {order.items.map((i) => `${i.quantity}× ${i.name}`).join(', ')}
-                      </td>
-                      <td className="py-4 px-4 font-bold text-charcoal">
-                        {formatCurrency(order.total)}
-                      </td>
-                      <td className="py-4 px-4">
                         <span
-                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border ${payBadge.bg} ${payBadge.text} ${payBadge.border}`}
+                          className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold border ${payBadge.bg} ${payBadge.text} ${payBadge.border}`}
                         >
-                          <span className={`w-1 h-1 rounded-full ${payBadge.dot}`} />
                           {order.paymentStatus}
                         </span>
-                      </td>
-                      <td className="py-4 px-4 text-charcoal-muted whitespace-nowrap">
-                        {formatTime(order.createdAt)}
-                      </td>
-                      <td className="py-4 px-4">
-                        <OrderStatusBadge status={order.orderStatus} />
-                      </td>
-                      <td
-                        className="py-4 px-5 text-right whitespace-nowrap"
-                        onClick={(e) => e.stopPropagation()}
+                      </div>
+                    </div>
+
+                    {/* Quick advance status action */}
+                    {action && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleAdvanceStatus(order, action.nextStatus)
+                        }}
+                        className={`px-3 py-2 rounded-xl text-xs font-bold shadow-xs transition-all active:scale-95 flex items-center gap-1.5 ${action.className}`}
                       >
-                        <div className="flex items-center justify-end gap-2">
-                          {(() => {
-                            const action = getNextStatusAction(order)
-                            if (!action) return null
-                            return (
+                        <span>{action.label}</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+
+          {/* DESKTOP HIGH-DENSITY TABLE (hidden lg:block) */}
+          <div className="hidden lg:block rounded-2xl bg-white border border-beige shadow-soft overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-canvas/80 text-charcoal-muted uppercase text-[10px] tracking-wider border-b border-beige">
+                  <tr>
+                    <th className="py-3.5 px-5 font-semibold">Order ID</th>
+                    <th className="py-3.5 px-4 font-semibold">Table</th>
+                    <th className="py-3.5 px-4 font-semibold">Guest</th>
+                    <th className="py-3.5 px-4 font-semibold">Dishes Summary</th>
+                    <th className="py-3.5 px-4 font-semibold">Total Amount</th>
+                    <th className="py-3.5 px-4 font-semibold">Payment</th>
+                    <th className="py-3.5 px-4 font-semibold">Time</th>
+                    <th className="py-3.5 px-4 font-semibold">Status</th>
+                    <th className="py-3.5 px-5 font-semibold text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-beige/60">
+                  {filteredOrders.map((order) => {
+                    const payBadge = getStatusBadgeStyles(order.paymentStatus)
+                    const action = getNextStatusAction(order)
+
+                    return (
+                      <tr
+                        key={order.id}
+                        className="hover:bg-canvas/50 transition-colors cursor-pointer group"
+                        onClick={() => handleViewDetails(order)}
+                      >
+                        <td className="py-3.5 px-5 font-bold text-charcoal font-mono">
+                          {order.id}
+                        </td>
+                        <td className="py-3.5 px-4">
+                          <span className="font-semibold text-charcoal px-2.5 py-1 rounded-lg bg-cream-100 border border-beige">
+                            T-{order.tableNumber}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-4 font-medium text-charcoal">
+                          {order.customerName}
+                        </td>
+                        <td className="py-3.5 px-4 text-charcoal-muted max-w-[200px] truncate">
+                          {order.items.map((i) => `${i.quantity}× ${i.name}`).join(', ')}
+                        </td>
+                        <td className="py-3.5 px-4 font-bold text-charcoal font-serif text-sm">
+                          {formatCurrency(order.total)}
+                        </td>
+                        <td className="py-3.5 px-4">
+                          <span
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${payBadge.bg} ${payBadge.text} ${payBadge.border}`}
+                          >
+                            <span className={`w-1 h-1 rounded-full ${payBadge.dot}`} />
+                            {order.paymentStatus}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-4 text-charcoal-muted whitespace-nowrap">
+                          {formatTime(order.createdAt)}
+                        </td>
+                        <td className="py-3.5 px-4">
+                          <OrderStatusBadge status={order.orderStatus} />
+                        </td>
+                        <td
+                          className="py-3.5 px-5 text-right whitespace-nowrap"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <div className="flex items-center justify-end gap-1.5">
+                            {action && (
                               <button
                                 onClick={() => handleAdvanceStatus(order, action.nextStatus)}
                                 className={`px-2.5 py-1.5 rounded-lg text-xs font-bold shadow-xs transition-all active:scale-95 flex items-center gap-1 ${action.className}`}
                               >
                                 <span>{action.label}</span>
-                                <ArrowRight className="w-3.5 h-3.5" />
-                              </button>
-                            )
-                          })()}
-
-                          <button
-                            onClick={() => handleViewDetails(order)}
-                            className="p-1.5 rounded-lg text-charcoal-muted hover:text-charcoal hover:bg-beige-light transition-colors"
-                            title="View Details"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handlePrintClick(order)}
-                            className="p-1.5 rounded-lg text-charcoal-muted hover:text-brand hover:bg-brand-50 transition-colors"
-                            title="Print Invoice"
-                          >
-                            <Printer className="w-4 h-4" />
-                          </button>
-                          {order.orderStatus !== 'Cancelled' &&
-                            order.orderStatus !== 'Completed' && (
-                              <button
-                                onClick={() => handleCancelClick(order)}
-                                className="p-1.5 rounded-lg text-charcoal-muted hover:text-rose-600 hover:bg-rose-50 transition-colors"
-                                title="Cancel Order"
-                              >
-                                <XCircle className="w-4 h-4" />
+                                <ArrowRight className="w-3 h-3" />
                               </button>
                             )}
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
+
+                            <button
+                              onClick={() => handleViewDetails(order)}
+                              className="p-1.5 rounded-lg text-charcoal-muted hover:text-charcoal hover:bg-cream-100 transition-colors"
+                              title="View Details"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </button>
+
+                            <button
+                              onClick={() => handlePrintClick(order)}
+                              className="p-1.5 rounded-lg text-charcoal-muted hover:text-brand hover:bg-brand-50 transition-colors"
+                              title="Print Invoice"
+                            >
+                              <Printer className="w-4 h-4" />
+                            </button>
+
+                            {order.orderStatus !== 'Cancelled' &&
+                              order.orderStatus !== 'Completed' && (
+                                <button
+                                  onClick={() => handleCancelClick(order)}
+                                  className="p-1.5 rounded-lg text-charcoal-muted hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                                  title="Cancel Order"
+                                >
+                                  <XCircle className="w-4 h-4" />
+                                </button>
+                              )}
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </Card>
+        </>
       )}
 
-      {/* Order Detail Drawer */}
+      {/* Modals & Drawers */}
       <OrderDetailDrawer
         order={selectedOrder}
         isOpen={isDrawerOpen}
@@ -448,7 +542,6 @@ export const OrdersPage: React.FC = () => {
         onTogglePayment={(orderId) => updatePaymentStatus(orderId, 'Paid')}
       />
 
-      {/* Cancel Order Confirmation Modal */}
       <CancelOrderModal
         order={cancelModalOrder}
         isOpen={!!cancelModalOrder}
@@ -456,7 +549,6 @@ export const OrdersPage: React.FC = () => {
         onConfirm={handleConfirmCancel}
       />
 
-      {/* Printable Invoice Modal */}
       <InvoiceModal
         order={invoiceModalOrder}
         isOpen={!!invoiceModalOrder}

@@ -4,29 +4,36 @@
 
 @layer base {
   :root {
-    --canvas: #F8F7F3;
+    --canvas: #FAF9F5;
     --card: #FFFFFF;
-    --charcoal: #252421;
-    --brand: #B99A62;
-    --border: #EAE7DF;
+    --charcoal: #191816;
+    --brand: #C5A265;
+    --border: #E8E5DF;
   }
 
   * {
-    border-color: #EAE7DF;
+    border-color: #E8E5DF;
   }
 
   body {
-    background-color: #F8F7F3;
-    color: #252421;
+    background-color: #FAF9F5;
+    color: #191816;
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     font-feature-settings: "rlig" 1, "calt" 1;
     -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1, h2, h3, h4, .font-serif {
+    font-family: 'Playfair Display', Georgia, serif;
+    letter-spacing: -0.015em;
   }
 }
 
-/* Custom premium scrollbar */
+/* Custom luxury scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 
 ::-webkit-scrollbar-track {
@@ -34,25 +41,19 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #DBD6C9;
+  background: #D8D4CA;
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #B99A62;
+  background: #C5A265;
 }
 
 /* Glass & elevation utilities */
 .glass-panel {
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-}
-
-.gold-gradient-text {
-  background: linear-gradient(135deg, #B99A62 0%, #D3BA8D 50%, #9A7D45 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
 }
 
 /* Print Invoice styles */
@@ -72,4 +73,3 @@
     padding: 20px;
   }
 }
-

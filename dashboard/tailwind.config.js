@@ -8,110 +8,99 @@ export default {
   theme: {
     extend: {
       colors: {
-        // DineFlow Theme Palette
         sidebar: {
-          DEFAULT: '#201F1C',
-          dark: '#171614',
-          hover: '#2A2925',
-          active: '#34322E',
-          border: '#33312C',
-          text: '#F3F1EC',
-          muted: '#9E9B93',
+          DEFAULT: '#191816',
+          dark: '#11100E',
+          hover: '#24221F',
+          active: '#2C2A26',
+          border: '#2E2B26',
+          text: '#F5F3ED',
+          muted: '#949088',
         },
         canvas: {
-          DEFAULT: '#F8F7F3', // Warm Off-White main background
-          alt: '#F2EFE8',
+          DEFAULT: '#FAF9F5',
+          alt: '#F4F2EC',
         },
         card: {
           DEFAULT: '#FFFFFF',
           hover: '#FCFBF8',
-          border: '#EAE7DF',
+          border: '#E8E5DF',
         },
         brand: {
-          DEFAULT: '#B99A62', // Champagne Gold
-          light: '#D3BA8D',
-          dark: '#9A7D45',
-          subtle: '#F7F3EA',
-          border: '#E2D5BE',
-          50: '#FBF9F4',
-          100: '#F5EFE1',
-          200: '#EBDDBF',
-          300: '#DDC698',
-          400: '#CBAD72',
-          500: '#B99A62',
-          600: '#A48249',
+          DEFAULT: '#C5A265',
+          light: '#DEC391',
+          dark: '#9E7E44',
+          subtle: '#FAF7F0',
+          border: '#E8DCBF',
+          50: '#FAF7F0',
+          100: '#F4EEDF',
+          200: '#E8DCBF',
+          300: '#D9C59B',
+          400: '#C5A265',
+          500: '#B5904F',
+          600: '#9E7E44',
           700: '#846738',
           800: '#68502E',
           900: '#4D3B23',
         },
         charcoal: {
-          DEFAULT: '#252421', // Dark Charcoal primary text
-          soft: '#3A3833',
-          muted: '#85827A',  // Secondary Muted Grey text
-          light: '#C4C0B6',
+          DEFAULT: '#191816',
+          soft: '#2E2C28',
+          muted: '#736F68',
+          light: '#C7C3BB',
         },
         beige: {
-          DEFAULT: '#EAE7DF', // Soft Beige border
-          light: '#F5F3ED',
-          dark: '#DBD6C9',
+          DEFAULT: '#E8E5DF',
+          light: '#F4F2EC',
+          dark: '#D5D1C7',
         },
-        // Semantic status colors
+        emerald: {
+          DEFAULT: '#0E3A2F',
+          50: '#F0FDF4',
+          100: '#DCFCE7',
+          600: '#16A34A',
+          700: '#15803D',
+          800: '#166534',
+        },
         status: {
           success: {
-            DEFAULT: '#15803D',
             bg: '#F0FDF4',
+            text: '#15803D',
             border: '#BBF7D0',
           },
           warning: {
-            DEFAULT: '#B45309',
             bg: '#FFFBEB',
+            text: '#B45309',
             border: '#FDE68A',
           },
           danger: {
-            DEFAULT: '#B91C1C',
             bg: '#FEF2F2',
+            text: '#B91C1C',
             border: '#FECACA',
           },
           info: {
-            DEFAULT: '#0369A1',
             bg: '#F0F9FF',
+            text: '#0369A1',
             border: '#BAE6FD',
           },
-          purple: {
-            DEFAULT: '#6D28D9',
-            bg: '#F5F3FF',
-            border: '#DDD6FE',
-          },
-        },
-        veg: {
-          DEFAULT: '#16A34A',
-          bg: '#F0FDF4',
-          border: '#86EFAC',
-        },
-        nonveg: {
-          DEFAULT: '#DC2626',
-          bg: '#FEF2F2',
-          border: '#FCA5A5',
         },
       },
       fontFamily: {
-        sans: ['"Plus Jakarta Sans"', 'Inter', 'system-ui', 'sans-serif'],
         serif: ['"Playfair Display"', 'Georgia', 'serif'],
+        sans: ['"Plus Jakarta Sans"', 'Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
       },
       boxShadow: {
-        'card': '0 1px 3px 0 rgba(37, 36, 33, 0.04), 0 1px 2px -1px rgba(37, 36, 33, 0.03)',
-        'card-hover': '0 8px 24px -4px rgba(37, 36, 33, 0.08), 0 2px 6px -1px rgba(37, 36, 33, 0.03)',
-        'dropdown': '0 10px 30px -4px rgba(32, 31, 28, 0.12), 0 4px 12px -2px rgba(32, 31, 28, 0.06)',
-        'modal': '0 25px 50px -12px rgba(32, 31, 28, 0.25)',
-        'gold-glow': '0 0 0 3px rgba(185, 154, 98, 0.2)',
+        'soft': '0 2px 10px rgba(25, 24, 22, 0.04)',
+        'medium': '0 6px 20px rgba(25, 24, 22, 0.07)',
+        'elevated': '0 12px 36px rgba(25, 24, 22, 0.12)',
+        'gold-glow': '0 4px 20px rgba(197, 162, 101, 0.25)',
       },
       borderRadius: {
-        'xl': '0.875rem',
-        '2xl': '1.125rem',
+        'xl': '0.75rem',
+        '2xl': '1rem',
         '3xl': '1.5rem',
       },
     },
   },
   plugins: [],
 }
-

@@ -11,8 +11,8 @@ import {
   Receipt,
   Info,
   AlertCircle,
+  Plus,
 } from 'lucide-react'
-import { Button } from '../components/ui/Button'
 import { DietaryBadge } from '../components/menu/DietaryBadge'
 import { CallWaiterModal } from '../components/modals/CallWaiterModal'
 import { RequestBillModal } from '../components/modals/RequestBillModal'
@@ -26,45 +26,45 @@ const STAGE_CONFIG: Record<
 > = {
   received: {
     title: 'Order Received',
-    subtitle: 'Kitchen received your ticket and is queuing the preparation',
-    icon: <Clock className="w-5 h-5" />,
-    color: 'text-amber-600 bg-amber-50 border-amber-200',
+    subtitle: 'Kitchen ticket queued. Our chef team is preparing ingredients.',
+    icon: <Clock className="w-4.5 h-4.5" />,
+    color: 'text-amber-700 bg-amber-50 border-amber-200',
   },
   accepted: {
-    title: 'Order Accepted',
-    subtitle: 'Head Chef Marco has reviewed your table specifications',
-    icon: <CheckCircle2 className="w-5 h-5" />,
-    color: 'text-sky-600 bg-sky-50 border-sky-200',
+    title: 'Order Confirmed',
+    subtitle: 'Kitchen reviewed your table order and fired the station ticket.',
+    icon: <CheckCircle2 className="w-4.5 h-4.5" />,
+    color: 'text-sky-700 bg-sky-50 border-sky-200',
   },
   preparing: {
-    title: 'Preparing in Kitchen',
-    subtitle: 'Dishes are firing on the wood hearth and fresh pasta station',
-    icon: <Flame className="w-5 h-5" />,
-    color: 'text-amber-700 bg-amber-50 border-amber-300',
+    title: 'Crafting in Kitchen',
+    subtitle: 'Dishes are firing on wood-fired hearths and fresh pasta stations.',
+    icon: <Flame className="w-4.5 h-4.5" />,
+    color: 'text-orange-700 bg-orange-50 border-orange-200',
   },
   ready: {
-    title: 'Ready to Serve',
-    subtitle: 'Plated, garnished, and being expedited to your table',
-    icon: <ChefHat className="w-5 h-5" />,
-    color: 'text-indigo-600 bg-indigo-50 border-indigo-200',
+    title: 'Ready to Expedite',
+    subtitle: 'Plated, inspected, and currently on its way to your table.',
+    icon: <ChefHat className="w-4.5 h-4.5" />,
+    color: 'text-purple-700 bg-purple-50 border-purple-200',
   },
   served: {
-    title: 'Served at Table',
-    subtitle: 'Enjoy your meal! Buon appetito.',
-    icon: <UtensilsCrossed className="w-5 h-5" />,
-    color: 'text-emerald-700 bg-emerald-50 border-emerald-300',
+    title: 'Served at Your Table',
+    subtitle: 'Dishes delivered. Enjoy your meal! Please call if you need anything.',
+    icon: <UtensilsCrossed className="w-4.5 h-4.5" />,
+    color: 'text-emerald-700 bg-emerald-50 border-emerald-200',
   },
   completed: {
-    title: 'Order Completed',
-    subtitle: 'Thank you for dining with us.',
-    icon: <CheckCircle2 className="w-5 h-5" />,
-    color: 'text-emerald-700 bg-emerald-50 border-emerald-300',
+    title: 'Dining Completed',
+    subtitle: 'Thank you for dining with us at The Olive & Ember.',
+    icon: <CheckCircle2 className="w-4.5 h-4.5" />,
+    color: 'text-emerald-700 bg-emerald-50 border-emerald-200',
   },
   cancelled: {
     title: 'Order Cancelled',
-    subtitle: 'Please contact restaurant staff if you need assistance.',
-    icon: <AlertCircle className="w-5 h-5" />,
-    color: 'text-red-700 bg-red-50 border-red-300',
+    subtitle: 'This ticket was cancelled. Please request table staff if needed.',
+    icon: <AlertCircle className="w-4.5 h-4.5" />,
+    color: 'text-rose-700 bg-rose-50 border-rose-200',
   },
 }
 
@@ -95,7 +95,7 @@ export const OrderTrackingPage: React.FC = () => {
       } finally {
         if (active) {
           setIsLoading(false)
-          timeout = setTimeout(refresh, 5000)
+          timeout = setTimeout(refresh, 4000)
         }
       }
     }
@@ -108,155 +108,163 @@ export const OrderTrackingPage: React.FC = () => {
 
   if (!order) {
     return (
-      <div className="min-h-screen bg-cream-100 flex items-center justify-center p-4">
-        <div className="max-w-md w-full bg-white p-8 rounded-3xl border border-beige shadow-soft text-center space-y-4">
-          {isLoading ? <Clock className="w-12 h-12 text-gold-700 mx-auto animate-pulse" /> : <AlertCircle className="w-12 h-12 text-amber-600 mx-auto" />}
-          <h2 className="font-serif font-bold text-2xl text-charcoal">{isLoading ? 'Loading Order' : 'Order Unavailable'}</h2>
-          <p className="text-sm text-charcoal-600">
-            {loadError || `We couldn't load order #${orderId}. Please check your connection and try again.`}
+      <div className="min-h-screen bg-canvas flex items-center justify-center p-4">
+        <div className="max-w-md w-full bg-white p-7 sm:p-8 rounded-3xl border border-beige shadow-soft text-center space-y-4">
+          {isLoading ? (
+            <Clock className="w-10 h-10 text-gold mx-auto animate-pulse" />
+          ) : (
+            <AlertCircle className="w-10 h-10 text-rose-600 mx-auto" />
+          )}
+          <h2 className="font-serif font-bold text-xl text-charcoal">
+            {isLoading ? 'Fetching Order Status' : 'Order Unavailable'}
+          </h2>
+          <p className="text-xs text-charcoal-600 leading-relaxed">
+            {loadError || `Checking order #${orderId} from kitchen records…`}
           </p>
-          <Link to="/menu">
-            <Button variant="gold" size="md" className="w-full">
-              Back to Digital Menu
-            </Button>
+          <Link
+            to="/menu"
+            className="inline-flex items-center justify-center w-full py-2.5 px-4 rounded-xl bg-charcoal text-white text-xs font-semibold hover:bg-emerald transition-colors"
+          >
+            Back to Digital Menu
           </Link>
         </div>
       </div>
     )
   }
 
-  const currentStageIndex = order.status === 'completed'
-    ? STAGES.length - 1
-    : STAGES.indexOf(order.status)
+  const currentStageIndex =
+    order.status === 'completed'
+      ? STAGES.length - 1
+      : STAGES.indexOf(order.status)
   const isFinished = order.status === 'served' || order.status === 'completed' || order.status === 'cancelled'
 
   return (
-    <div className="min-h-screen bg-cream-100/70 pb-20">
+    <div className="min-h-screen bg-canvas text-charcoal pb-20 selection:bg-gold/20 selection:text-charcoal">
       {/* Header */}
-      <nav aria-label="Order tracking navigation" className="sticky top-0 z-30 glass-header border-b border-beige py-4 px-4 sm:px-6">
+      <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-beige py-3.5 px-4 sm:px-6">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <Link
             to="/menu"
-            className="inline-flex items-center gap-2 text-sm font-medium text-charcoal-700 hover:text-charcoal transition-colors"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-charcoal-600 hover:text-charcoal transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
             <span>Digital Menu</span>
           </Link>
 
           <div className="text-center">
-            <h1 className="font-serif font-bold text-lg sm:text-xl text-charcoal">
-              Live Order Tracker
+            <h1 className="font-serif font-bold text-base sm:text-lg text-charcoal tracking-tight">
+              Order Status Tracker
             </h1>
-            <p className="text-xs text-charcoal-600 font-mono">
-              Order #{order.id}
+            <p className="text-[11px] text-charcoal-600 font-mono">
+              Ticket #{order.orderNumber || order.id}
             </p>
           </div>
 
           <div className="text-right">
-            <span className="inline-block px-3 py-1 rounded-full text-xs font-bold bg-gold-50 text-gold-800 border border-gold-200">
+            <span className="inline-block px-3 py-1 rounded-full text-[11px] font-bold bg-gold-50 text-charcoal border border-gold-300">
               TABLE {order.tableNumber}
             </span>
           </div>
         </div>
-      </nav>
+      </header>
 
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 pt-6 space-y-6">
-        {/* Important notice badge */}
-        <div className="p-3 rounded-2xl bg-cream-200/60 border border-beige-dark flex items-center gap-2.5 text-xs text-charcoal-700">
-          <Info className="w-4 h-4 text-gold-700 shrink-0" />
-          <span>
-            <strong>Live order status:</strong> This page refreshes automatically while the restaurant updates your order.
-            {loadError ? ` Latest status could not be refreshed: ${loadError}` : ''}
+      <main className="max-w-4xl mx-auto px-4 sm:px-6 pt-5 sm:pt-6 space-y-5">
+        {/* Real-time Indicator banner */}
+        <div className="p-3 rounded-xl bg-white/80 border border-beige flex items-center justify-between gap-2 text-xs text-charcoal-600 shadow-2xs">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span>Live status connected to kitchen • Auto-updating</span>
+          </div>
+          <span className="text-[10px] text-charcoal-600 font-mono hidden sm:inline">
+            Placed {formatTime(order.createdAt)}
           </span>
         </div>
 
-        {/* Current Status Hero Card */}
-        <div className="p-6 sm:p-8 rounded-3xl bg-white border border-beige shadow-soft space-y-6">
+        {/* Current State Hero Card */}
+        <div className="p-5 sm:p-7 rounded-2xl sm:rounded-3xl bg-white border border-beige shadow-soft space-y-5">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="text-xs font-semibold uppercase tracking-wider text-charcoal-600">
-                  Current Kitchen State
-                </span>
-              </div>
-              <h2 className="font-serif font-bold text-2xl sm:text-3xl text-charcoal mt-1">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-charcoal-600 block">
+                Current Kitchen Stage
+              </span>
+              <h2 className="font-serif font-bold text-2xl sm:text-3xl text-charcoal mt-1 tracking-tight">
                 {STAGE_CONFIG[order.status].title}
               </h2>
-              <p className="text-sm text-charcoal-600 mt-1 max-w-lg">
+              <p className="text-xs sm:text-sm text-charcoal-600 mt-1 max-w-lg leading-relaxed">
                 {STAGE_CONFIG[order.status].subtitle}
               </p>
             </div>
 
             {/* Estimated Time Badge */}
-            <div className="p-4 rounded-2xl bg-cream-100 border border-beige text-center sm:text-right shrink-0">
-              <div className="text-[11px] font-semibold uppercase tracking-wider text-charcoal-600">
-                Estimated Service Time
+            <div className="p-3.5 sm:p-4 rounded-2xl bg-cream-50 border border-beige text-center sm:text-right shrink-0">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-charcoal-600 block">
+                Estimated Delivery
+              </span>
+              <div className="font-serif font-bold text-xl sm:text-2xl text-charcoal mt-0.5">
+                {order.status === 'completed'
+                  ? 'Completed'
+                  : isFinished
+                  ? 'Served'
+                  : `~${order.estimatedTimeMinutes} mins`}
               </div>
-              <div className="font-serif font-bold text-2xl text-gold-700 mt-0.5">
-                {order.status === 'completed' ? 'Completed' : isFinished ? 'Served' : `~${order.estimatedTimeMinutes} mins`}
-              </div>
-              <div className="text-[11px] text-charcoal-600">
-                Placed at {formatTime(order.createdAt)}
-              </div>
+              <span className="text-[10px] text-charcoal-600 font-medium">
+                Table {order.tableNumber}
+              </span>
             </div>
           </div>
 
-          {/* Interactive Progress Timeline */}
-          <div className="pt-4">
+          {/* Stepper Timeline */}
+          <div className="pt-3">
             <div className="relative">
-              {/* Connecting background line */}
-              <div className="absolute top-6 left-6 right-6 h-1 bg-cream-200 hidden sm:block -z-0" />
+              {/* Connecting background bar on desktop */}
+              <div className="absolute top-5 left-6 right-6 h-1 bg-cream-200 hidden sm:block -z-0" />
               <div
-                className="absolute top-6 left-6 h-1 bg-gold transition-all duration-700 hidden sm:block -z-0"
-                style={{ width: `${(Math.max(currentStageIndex, 0) / (STAGES.length - 1)) * 90}%` }}
+                className="absolute top-5 left-6 h-1 bg-gold transition-all duration-500 hidden sm:block -z-0"
+                style={{
+                  width: `${(Math.max(currentStageIndex, 0) / (STAGES.length - 1)) * 90}%`,
+                }}
               />
 
-              {/* Timeline Steps */}
-              <div className="grid grid-cols-1 sm:grid-cols-5 gap-4 relative z-10">
+              <div className="grid grid-cols-1 sm:grid-cols-5 gap-3.5 relative z-10">
                 {STAGES.map((stageKey, idx) => {
                   const stageInfo = STAGE_CONFIG[stageKey]
                   const isDone = idx < currentStageIndex
                   const isCurrent = idx === currentStageIndex
-                  const isPending = idx > currentStageIndex
 
                   return (
                     <div
                       key={stageKey}
-                      className="flex sm:flex-col items-center sm:text-center gap-3 sm:gap-2.5"
+                      className="flex sm:flex-col items-center sm:text-center gap-3 sm:gap-2"
                     >
                       {/* Step Circle */}
                       <div
-                        className={`w-12 h-12 rounded-2xl flex items-center justify-center font-bold text-sm transition-all duration-300 shadow-xs shrink-0 ${
+                        className={`w-10 h-10 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl flex items-center justify-center font-bold text-xs transition-all duration-200 shadow-2xs shrink-0 ${
                           isCurrent
-                            ? 'bg-gold text-white ring-4 ring-gold/20 scale-105'
+                            ? 'bg-charcoal text-white ring-4 ring-gold/25 scale-105'
                             : isDone
-                            ? 'bg-charcoal text-cream-100'
-                            : 'bg-cream-100 text-charcoal-600 border border-beige'
+                            ? 'bg-emerald-800 text-white'
+                            : 'bg-white text-charcoal-600 border border-beige'
                         }`}
                       >
                         {isDone ? (
-                          <CheckCircle2 className="w-5 h-5 text-gold-light" />
+                          <CheckCircle2 className="w-4 h-4 text-emerald-200" />
                         ) : (
                           stageInfo.icon
                         )}
                       </div>
 
-                      {/* Text */}
+                      {/* Step Text */}
                       <div className="flex-1 sm:flex-initial">
                         <div
-                          className={`font-serif font-bold text-sm leading-tight ${
+                          className={`font-serif font-bold text-xs sm:text-sm leading-tight ${
                             isCurrent
-                              ? 'text-gold-800'
-                              : isDone
                               ? 'text-charcoal'
-                              : 'text-charcoal-600'
+                              : isDone
+                              ? 'text-emerald-900 font-semibold'
+                              : 'text-charcoal-600/70 font-normal'
                           }`}
                         >
                           {stageInfo.title}
-                        </div>
-                        <div className="text-[10px] text-charcoal-600 mt-0.5">
-                          Step {idx + 1} of 5
                         </div>
                       </div>
                     </div>
@@ -265,112 +273,86 @@ export const OrderTrackingPage: React.FC = () => {
               </div>
             </div>
           </div>
-
         </div>
 
-        {/* Order Details & Items Card */}
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-          {/* Items breakdown (7 cols) */}
-          <div className="md:col-span-7 p-6 rounded-3xl bg-white border border-beige shadow-soft space-y-4">
-            <div className="flex items-center justify-between border-b border-beige pb-3">
-              <h3 className="font-serif font-bold text-lg text-charcoal">Prepared Items</h3>
-              <span className="text-xs font-mono text-gold-700 font-semibold">
-                TABLE {order.tableNumber}
-              </span>
-            </div>
+        {/* Quick Table Service Actions */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <button
+            onClick={() => setIsWaiterModalOpen(true)}
+            className="p-3.5 rounded-2xl bg-white border border-beige hover:border-gold-300 shadow-soft flex items-center justify-center gap-2 text-xs font-semibold text-charcoal hover:bg-cream-50 transition-colors active:scale-98"
+          >
+            <BellRing className="w-4 h-4 text-gold-700" />
+            <span>Call Table Waiter</span>
+          </button>
 
-            <div className="divide-y divide-beige-light space-y-3">
-              {order.items.map((item) => (
-                <div key={item.cartItemId} className="pt-3 first:pt-0 flex items-start justify-between gap-3 text-sm">
-                  <div className="space-y-0.5">
-                    <div className="flex items-center gap-2">
-                      <DietaryBadge isVeg={item.foodItem.isVegetarian} size="sm" />
-                      <span className="font-serif font-bold text-charcoal">{item.foodItem.name}</span>
-                      <span className="text-xs font-bold text-gold-700">×{item.quantity}</span>
-                    </div>
+          <button
+            onClick={() => setIsBillModalOpen(true)}
+            className="p-3.5 rounded-2xl bg-white border border-beige hover:border-gold-300 shadow-soft flex items-center justify-center gap-2 text-xs font-semibold text-charcoal hover:bg-cream-50 transition-colors active:scale-98"
+          >
+            <Receipt className="w-4 h-4 text-gold-700" />
+            <span>Request Final Bill</span>
+          </button>
 
-                    {item.selectedCustomizations.length > 0 && (
-                      <div className="text-xs text-charcoal-600 pl-4">
-                        {item.selectedCustomizations.map((c) => c.optionName).join(', ')}
-                      </div>
-                    )}
+          <Link
+            to="/menu"
+            className="p-3.5 rounded-2xl bg-charcoal text-white hover:bg-emerald shadow-soft flex items-center justify-center gap-2 text-xs font-semibold transition-colors active:scale-98"
+          >
+            <Plus className="w-4 h-4 text-gold" />
+            <span>Order More Dishes</span>
+          </Link>
+        </div>
 
-                    {item.specialInstructions && (
-                      <div className="text-[11px] text-charcoal-600 italic pl-4">
-                        Instructions: "{item.specialInstructions}"
-                      </div>
-                    )}
-                  </div>
-
-                  <span className="font-serif font-bold text-charcoal">
-                    {formatCurrency(item.lineTotal)}
-                  </span>
-                </div>
-              ))}
-            </div>
-
-            {order.orderNotes && (
-              <div className="p-3 rounded-xl bg-cream-50 border border-beige text-xs text-charcoal-700">
-                <strong>Table Notes:</strong> {order.orderNotes}
-              </div>
-            )}
+        {/* Items Summary Card */}
+        <div className="p-5 rounded-2xl bg-white border border-beige shadow-soft space-y-4">
+          <div className="flex items-center justify-between border-b border-beige pb-3">
+            <h3 className="font-serif font-bold text-base text-charcoal">Ordered Dishes</h3>
+            <span className="text-[11px] text-charcoal-600 font-medium">
+              {order.items.length} {order.items.length === 1 ? 'item' : 'items'}
+            </span>
           </div>
 
-          {/* Table Hospitality & Payment Card (5 cols) */}
-          <div className="md:col-span-5 space-y-6">
-            <div className="p-6 rounded-3xl bg-white border border-beige shadow-soft space-y-4">
-              <h3 className="font-serif font-bold text-lg text-charcoal">Bill & Table Actions</h3>
+          <div className="divide-y divide-beige/60">
+            {order.items.map((item, idx) => (
+              <div key={idx} className="py-2.5 first:pt-0 last:pb-0 flex items-start justify-between gap-3 text-xs">
+                <div className="flex items-start gap-2">
+                  <DietaryBadge isVeg={item.foodItem.isVegetarian} size="sm" />
+                  <div>
+                    <span className="font-serif font-bold text-sm text-charcoal">{item.foodItem.name}</span>
+                    <span className="text-gold-700 font-mono font-bold ml-1.5">×{item.quantity}</span>
+                    {item.specialInstructions && (
+                      <p className="text-[10px] text-charcoal-600 italic mt-0.5">
+                        "{item.specialInstructions}"
+                      </p>
+                    )}
+                  </div>
+                </div>
 
-              <div className="space-y-2 text-sm text-charcoal-700 pb-3 border-b border-beige">
-                <div className="flex justify-between">
-                  <span className="text-charcoal-600">Subtotal</span>
-                  <span>{formatCurrency(order.breakdown.subtotal)}</span>
-                </div>
-                <div className="flex justify-between text-xs text-charcoal-600">
-                  <span>GST (5%)</span>
-                  <span>{formatCurrency(order.breakdown.gstTotal)}</span>
-                </div>
-                <div className="flex justify-between text-xs text-charcoal-600">
-                  <span>Service Charge (5%)</span>
-                  <span>{formatCurrency(order.breakdown.serviceCharge)}</span>
-                </div>
-                <div className="flex justify-between font-serif font-bold text-base text-charcoal pt-1 border-t border-dashed border-beige">
-                  <span>Total Amount</span>
-                  <span className="text-gold-700">{formatCurrency(order.breakdown.finalTotal)}</span>
-                </div>
+                <span className="font-serif font-bold text-xs sm:text-sm text-charcoal">
+                  {formatCurrency(item.lineTotal)}
+                </span>
               </div>
+            ))}
+          </div>
 
-              <div className="space-y-2.5">
-                <button
-                  onClick={() => setIsWaiterModalOpen(true)}
-                  className="w-full p-3 rounded-xl bg-cream-100 hover:bg-cream-200 border border-beige text-charcoal text-xs font-semibold flex items-center justify-center gap-2 transition-colors"
-                >
-                  <BellRing className="w-4 h-4 text-gold-700" />
-                  <span>Call Waiter to Table {order.tableNumber}</span>
-                </button>
-
-                <button
-                  onClick={() => setIsBillModalOpen(true)}
-                  className="w-full p-3 rounded-xl bg-gold-50 hover:bg-gold-100 border border-gold-200 text-gold-800 text-xs font-semibold flex items-center justify-center gap-2 transition-colors"
-                >
-                  <Receipt className="w-4 h-4 text-gold-700" />
-                  <span>Request Table Check</span>
-                </button>
-              </div>
-
-              <div className="pt-2">
-                <Link to="/">
-                  <Button variant="outline" size="sm" className="w-full text-xs">
-                    Order Additional Dishes
-                  </Button>
-                </Link>
-              </div>
+          {/* Pricing Breakdown */}
+          <div className="pt-3 border-t border-dashed border-beige space-y-1.5 text-xs text-charcoal-600">
+            <div className="flex justify-between">
+              <span>Subtotal</span>
+              <span className="font-medium text-charcoal">{formatCurrency(order.breakdown.subtotal)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>GST (5%)</span>
+              <span className="font-medium text-charcoal">{formatCurrency(order.breakdown.gstTotal)}</span>
+            </div>
+            <div className="pt-2 border-t border-beige flex justify-between items-baseline font-serif font-bold text-sm sm:text-base text-charcoal">
+              <span>Total Paid / Payable</span>
+              <span>{formatCurrency(order.breakdown.finalTotal)}</span>
             </div>
           </div>
         </div>
       </main>
 
-      {/* Modals */}
+      {/* Service Modals */}
       <CallWaiterModal
         isOpen={isWaiterModalOpen}
         onClose={() => setIsWaiterModalOpen(false)}

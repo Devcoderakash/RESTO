@@ -7,7 +7,6 @@ import {
   GlassWater,
   Cake,
   Leaf,
-  Sparkles,
 } from 'lucide-react'
 import { CategoryId, MenuCategory } from '../../types/menu'
 import { cn } from '../../lib/utils'
@@ -28,36 +27,38 @@ export const CategoryNavigation: React.FC<CategoryNavigationProps> = ({
   onSelectCategory,
   dietaryFilter,
   onSelectDietaryFilter,
-  showChefSpecialsOnly,
-  onToggleChefSpecials,
-  categoryCounts,
   categories,
 }) => {
   const getCategoryIcon = (id: CategoryId) => {
     switch (id) {
       case 'all':
-        return <UtensilsCrossed className="w-4 h-4" />
+        return <UtensilsCrossed className="w-3.5 h-3.5" />
       case 'starters':
-        return <Flame className="w-4 h-4" />
+      case 'cat-1':
+        return <Flame className="w-3.5 h-3.5" />
       case 'mains':
-        return <CookingPot className="w-4 h-4" />
+      case 'cat-2':
+        return <CookingPot className="w-3.5 h-3.5" />
       case 'pizza-pasta':
-        return <Pizza className="w-4 h-4" />
+      case 'cat-3':
+        return <Pizza className="w-3.5 h-3.5" />
       case 'beverages':
-        return <GlassWater className="w-4 h-4" />
+      case 'cat-4':
+        return <GlassWater className="w-3.5 h-3.5" />
       case 'desserts':
-        return <Cake className="w-4 h-4" />
+      case 'cat-5':
+        return <Cake className="w-3.5 h-3.5" />
       default:
-        return <UtensilsCrossed className="w-4 h-4" />
+        return <UtensilsCrossed className="w-3.5 h-3.5" />
     }
   }
 
   return (
-    <div className="sticky top-16 z-20 bg-[#FAF8F3]/95 backdrop-blur-md border-b border-[#E9E4DA] py-2.5 shadow-2xs transition-all">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6">
-        {/* Categories Horizontal Slider */}
-        <div className="flex items-center justify-between gap-3 overflow-x-auto no-scrollbar scroll-smooth py-0.5">
-          <div className="flex items-center gap-1.5 sm:gap-2">
+    <div className="sticky top-15 sm:top-16 z-20 bg-canvas/90 backdrop-blur-md border-b border-beige/80 py-2 sm:py-2.5 transition-all">
+      <div className="max-w-6xl mx-auto px-3.5 sm:px-6">
+        <div className="flex items-center justify-between gap-2 overflow-x-auto no-scrollbar scroll-smooth">
+          {/* Categories Pill Slider */}
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             {categories.map((category) => {
               const isActive = activeCategory === category.id
 
@@ -66,13 +67,13 @@ export const CategoryNavigation: React.FC<CategoryNavigationProps> = ({
                   key={category.id}
                   onClick={() => onSelectCategory(category.id)}
                   className={cn(
-                    'shrink-0 flex items-center gap-1.5 px-3.5 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-medium transition-all duration-200',
+                    'shrink-0 flex items-center gap-1.5 px-3 sm:px-3.5 py-1.5 sm:py-2 rounded-xl text-xs sm:text-sm font-medium transition-all duration-200 active:scale-95',
                     isActive
-                      ? 'bg-[#22211F] text-[#FAF8F3] shadow-xs'
-                      : 'bg-white hover:bg-[#F5F2EB] text-[#22211F] border border-[#E9E4DA]'
+                      ? 'bg-charcoal text-white shadow-xs font-semibold'
+                      : 'bg-white hover:bg-cream-100 text-charcoal border border-beige hover:border-gold-300'
                   )}
                 >
-                  <span className={isActive ? 'text-[#B99A62]' : 'text-[#77736D]'}>
+                  <span className={isActive ? 'text-gold' : 'text-charcoal-600'}>
                     {getCategoryIcon(category.id)}
                   </span>
                   <span>{category.name}</span>
@@ -81,33 +82,33 @@ export const CategoryNavigation: React.FC<CategoryNavigationProps> = ({
             })}
           </div>
 
-          {/* Veg / Non-Veg Quick Toggles */}
-          <div className="flex items-center gap-1.5 shrink-0 pl-2 border-l border-[#E9E4DA]">
+          {/* Quick Dietary Filters (Veg / Non-Veg) */}
+          <div className="flex items-center gap-1 shrink-0 pl-2 border-l border-beige">
             <button
               onClick={() => onSelectDietaryFilter(dietaryFilter === 'veg' ? 'all' : 'veg')}
               className={cn(
-                'flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all border',
+                'flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all border active:scale-95',
                 dietaryFilter === 'veg'
-                  ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                  ? 'bg-emerald-700 text-white border-emerald-700 shadow-xs'
                   : 'bg-white text-emerald-800 border-emerald-200 hover:bg-emerald-50'
               )}
-              title="Vegetarian only"
+              title="Filter vegetarian only"
             >
-              <Leaf className="w-3.5 h-3.5" />
+              <Leaf className="w-3 h-3" />
               <span>Veg</span>
             </button>
 
             <button
               onClick={() => onSelectDietaryFilter(dietaryFilter === 'non-veg' ? 'all' : 'non-veg')}
               className={cn(
-                'flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all border',
+                'flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all border active:scale-95',
                 dietaryFilter === 'non-veg'
                   ? 'bg-rose-700 text-white border-rose-700 shadow-xs'
                   : 'bg-white text-rose-800 border-rose-200 hover:bg-rose-50'
               )}
-              title="Non-Vegetarian only"
+              title="Filter non-vegetarian only"
             >
-              <Flame className="w-3.5 h-3.5" />
+              <span className="w-2 h-2 rounded-full bg-rose-600" />
               <span>Non-Veg</span>
             </button>
           </div>

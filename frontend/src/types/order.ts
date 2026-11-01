@@ -22,6 +22,7 @@ export type PaymentMethod = 'counter' | 'upi'
 
 export interface Order {
   id: string // e.g. "DF-8492"
+  orderNumber?: string
   tableNumber: string
   customerName?: string
   customerPhone?: string
