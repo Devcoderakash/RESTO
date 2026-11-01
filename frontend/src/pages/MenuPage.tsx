@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { RestaurantHeader } from '../components/layout/RestaurantHeader'
 import { CategoryNavigation } from '../components/menu/CategoryNavigation'
+import { DietaryFilterBar } from '../components/menu/DietaryFilterBar'
 import { SearchBar, SortOption } from '../components/menu/SearchBar'
 import { FoodGrid } from '../components/menu/FoodGrid'
 import { FoodDetailModal } from '../components/modals/FoodDetailModal'
@@ -198,7 +199,7 @@ export const MenuPage: React.FC = () => {
         onFocusSearch={handleFocusSearch}
       />
 
-      <main className="flex-1 pb-16">
+      <main className="flex-1 pb-32">
         {/* Sticky Category Navigation */}
         <CategoryNavigation
           activeCategory={activeCategory}
@@ -206,16 +207,20 @@ export const MenuPage: React.FC = () => {
             setActiveCategory(id)
             if (searchQuery) setSearchQuery('')
           }}
-          dietaryFilter={dietaryFilter}
-          onSelectDietaryFilter={setDietaryFilter}
-          showChefSpecialsOnly={showChefSpecialsOnly}
-          onToggleChefSpecials={() => setShowChefSpecialsOnly(!showChefSpecialsOnly)}
           categoryCounts={categoryCounts}
           categories={menuCategories}
         />
 
-        {/* Search, Sorting & Menu Items Grid */}
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-4">
+        {/* Dietary Filters, Search & Menu Items */}
+        <div className="max-w-6xl mx-auto px-3.5 sm:px-6 pt-2 sm:pt-4 space-y-1">
+          {/* Dedicated Dietary Filter Row */}
+          <DietaryFilterBar
+            dietaryFilter={dietaryFilter}
+            onSelectDietaryFilter={setDietaryFilter}
+            showChefSpecialsOnly={showChefSpecialsOnly}
+            onToggleChefSpecials={() => setShowChefSpecialsOnly(!showChefSpecialsOnly)}
+          />
+
           <SearchBar
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}

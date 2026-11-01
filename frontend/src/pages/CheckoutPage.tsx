@@ -114,7 +114,7 @@ export const CheckoutPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-canvas text-charcoal pb-20 selection:bg-gold/20 selection:text-charcoal">
+    <div className="min-h-screen bg-canvas text-charcoal pb-32 selection:bg-gold/20 selection:text-charcoal">
       {/* Checkout Header */}
       <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-beige py-3.5 px-4 sm:px-6">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
@@ -346,8 +346,8 @@ export const CheckoutPage: React.FC = () => {
                 <CartSummary breakdown={breakdown} />
               </div>
 
-              {/* Submit CTA */}
-              <div className="pt-2 space-y-2">
+              {/* Submit CTA (Desktop only) */}
+              <div className="hidden md:block pt-2 space-y-2">
                 <button
                   type="button"
                   disabled={isSubmitting}
@@ -370,6 +370,28 @@ export const CheckoutPage: React.FC = () => {
           </div>
         </div>
       </main>
+
+      {/* Mobile Sticky Place Order Bar */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 p-3.5 bg-white/95 backdrop-blur-md border-t border-beige shadow-elevated safe-bottom z-40">
+        <div className="flex items-center justify-between gap-3 max-w-md mx-auto">
+          <div>
+            <div className="text-[10px] text-charcoal-600 font-medium">Total incl. 5% GST</div>
+            <div className="font-serif font-black text-base text-charcoal">
+              {formatCurrency(breakdown.finalTotal)}
+            </div>
+          </div>
+
+          <button
+            type="button"
+            disabled={isSubmitting}
+            onClick={handlePlaceOrder}
+            className="flex-1 py-3 px-4 rounded-xl bg-charcoal hover:bg-emerald text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-all shadow-md active:scale-95 disabled:opacity-50"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-gold" />
+            <span>{isSubmitting ? 'Sending...' : 'Place Order →'}</span>
+          </button>
+        </div>
+      </div>
     </div>
   )
 }

@@ -26,19 +26,19 @@ export const FoodGrid: React.FC<FoodGridProps> = ({
 
   if (items.length === 0) {
     return (
-      <div className="py-16 text-center space-y-4 max-w-md mx-auto">
-        <div className="w-16 h-16 rounded-full bg-cream-100 border border-beige flex items-center justify-center text-charcoal-600 mx-auto">
-          <Utensils className="w-7 h-7 stroke-[1.5]" />
+      <div className="py-14 text-center space-y-4 max-w-md mx-auto">
+        <div className="w-16 h-16 rounded-2xl bg-cream-100 border border-beige flex items-center justify-center text-charcoal-600 mx-auto">
+          <Utensils className="w-7 h-7 stroke-[1.5] text-gold-700" />
         </div>
-        <div>
-          <h3 className="font-serif font-bold text-xl text-charcoal">No dishes found</h3>
-          <p className="text-sm text-charcoal-600 mt-1">
-            Try adjusting your search terms or select another category.
+        <div className="space-y-1">
+          <h3 className="font-serif font-bold text-lg text-charcoal">No dishes found</h3>
+          <p className="text-xs text-charcoal-600 leading-relaxed">
+            We couldn't find any dishes matching your filters or search terms.
           </p>
         </div>
-        <Button variant="outline" size="md" onClick={onResetFilters}>
-          <RotateCcw className="w-4 h-4 mr-1.5" />
-          Reset Search
+        <Button variant="outline" size="sm" onClick={onResetFilters}>
+          <RotateCcw className="w-3.5 h-3.5 mr-1.5" />
+          Reset All Filters
         </Button>
       </div>
     )
@@ -47,20 +47,21 @@ export const FoodGrid: React.FC<FoodGridProps> = ({
   const currentCategoryObj = categories.find((c) => c.id === activeCategory)
 
   return (
-    <div className="py-6">
-      <section className="space-y-4">
-        <div className="flex items-end justify-between border-b border-beige pb-3">
+    <div className="py-4">
+      <section className="space-y-3.5">
+        <div className="flex items-center justify-between border-b border-beige/80 pb-2">
           <div>
-            <h2 className="font-serif font-bold text-2xl text-charcoal">
-              {isSearching ? `Search: "${searchQuery}"` : currentCategoryObj?.name || 'All Items'}
+            <h2 className="font-serif font-bold text-lg sm:text-xl text-charcoal tracking-tight">
+              {isSearching ? `Search results for "${searchQuery}"` : currentCategoryObj?.name || 'All Items'}
             </h2>
           </div>
-          <span className="text-xs text-charcoal-600">
+          <span className="text-xs text-charcoal-600 font-medium">
             {items.length} {items.length === 1 ? 'dish' : 'dishes'}
           </span>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        {/* Responsive Grid: Horizontal cards on mobile (grid-cols-1), Multi-column on tablet/desktop */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
           {items.map((item) => (
             <FoodCard key={item.id} foodItem={item} onSelect={onSelectItem} />
           ))}
