@@ -6,7 +6,7 @@ const DEFAULT_STAFF_TOKEN = 'demo-staff-token-manager'
 const DEFAULT_STAFF_EMAIL = 'contact@oliveandember.com'
 
 function getApiBaseUrl(): string {
-  const envUrl = import.meta.env.VITE_API_URL || 'http://localhost:5001/api'
+  const envUrl = import.meta.env.VITE_API_URL || 'https://resto-vc53.onrender.com/api'
   let cleanUrl = envUrl.replace(/\/+$/, '')
   if (!cleanUrl.endsWith('/api')) {
     cleanUrl = `${cleanUrl}/api`
