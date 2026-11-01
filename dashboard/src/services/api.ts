@@ -5,7 +5,16 @@ export const restaurantSlug = import.meta.env.VITE_RESTAURANT_SLUG || 'olive-and
 const DEFAULT_STAFF_TOKEN = 'demo-staff-token-manager'
 const DEFAULT_STAFF_EMAIL = 'contact@oliveandember.com'
 
-const apiBaseUrl = (import.meta.env.VITE_API_URL || 'http://localhost:5001/api').replace(/\/+$/, '')
+function getApiBaseUrl(): string {
+  const envUrl = import.meta.env.VITE_API_URL || 'http://localhost:5001/api'
+  let cleanUrl = envUrl.replace(/\/+$/, '')
+  if (!cleanUrl.endsWith('/api')) {
+    cleanUrl = `${cleanUrl}/api`
+  }
+  return cleanUrl
+}
+
+const apiBaseUrl = getApiBaseUrl()
 const AUTH_TOKEN_KEY = 'resto_access_token'
 const AUTH_EMAIL_KEY = 'resto_staff_email'
 export const AUTH_CHANGE_EVENT = 'resto:auth-change'

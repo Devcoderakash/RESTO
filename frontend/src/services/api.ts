@@ -2,7 +2,16 @@ import { CartItem } from '../types/cart'
 import { FoodItem, MenuCategory } from '../types/menu'
 import { Order, PaymentMethod, ServiceRequestType } from '../types/order'
 
-const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:5001/api').replace(/\/$/, '')
+function getApiUrl(): string {
+  const envUrl = import.meta.env.VITE_API_URL || 'http://localhost:5001/api'
+  let cleanUrl = envUrl.replace(/\/+$/, '')
+  if (!cleanUrl.endsWith('/api')) {
+    cleanUrl = `${cleanUrl}/api`
+  }
+  return cleanUrl
+}
+
+const API_URL = getApiUrl()
 export const RESTAURANT_SLUG = import.meta.env.VITE_RESTAURANT_SLUG || 'olive-and-ember'
 
 export class ApiError extends Error {
