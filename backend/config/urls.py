@@ -10,6 +10,7 @@ from apps.orders import views as order_views
 from apps.service_requests import views as service_views
 from apps.payments import views as payment_views
 from apps.dashboard import views as dashboard_views
+from apps.realtime import views as realtime_views
 
 @api_view(["GET"])
 @permission_classes([AllowAny])
@@ -57,6 +58,12 @@ urlpatterns = [
     # Payments
     path("api/payments", payment_views.payments_view, name="payments"),
     path("api/payments/<str:pk>/status", payment_views.payment_status_view, name="payment-status"),
+
+    # Real-Time SSE Stream & State Sync
+    path("api/realtime/stream", realtime_views.realtime_stream, name="realtime-stream"),
+    path("api/realtime/sync", realtime_views.realtime_sync, name="realtime-sync"),
+    path("realtime/stream", realtime_views.realtime_stream),
+    path("realtime/sync", realtime_views.realtime_sync),
 
     # Dashboard Metrics
     path("api/dashboard/overview", dashboard_views.dashboard_overview, name="dashboard-overview"),

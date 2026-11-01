@@ -79,3 +79,4 @@ export const DietaryFilterBar: React.FC<DietaryFilterBarProps> = ({
     </div>
   )
 }
+

@@ -24,6 +24,7 @@ export interface OrderItem {
 
 export interface Order {
   id: string // e.g. ORD-2841
+  orderNumber?: string
   tableNumber: string // e.g. "04"
   customerName: string
   customerPhone?: string

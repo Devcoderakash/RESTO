@@ -10,6 +10,7 @@ import { PaymentsPage } from './pages/PaymentsPage'
 import { SettingsPage } from './pages/SettingsPage'
 import { ChefDashboardPage } from './pages/ChefDashboardPage'
 import { WaiterDashboardPage } from './pages/WaiterDashboardPage'
+import { dashboardRealtimeService } from './services/realtimeService'
 
 const AppRoutes: React.FC = () => {
   const loadDashboard = useDashboardDataStore((state) => state.loadDashboard)
@@ -17,10 +18,18 @@ const AppRoutes: React.FC = () => {
 
   useEffect(() => {
     void loadDashboard()
+    // 1. Establish immediate zero-latency Real-Time SSE stream
+    const disconnectRealtime = dashboardRealtimeService.connect()
+
+    // 2. Gentle periodic background reconciliation as a safety net
     const timer = window.setInterval(() => {
       void refreshLiveData()
-    }, 20_000)
-    return () => window.clearInterval(timer)
+    }, 45_000)
+
+    return () => {
+      disconnectRealtime()
+      window.clearInterval(timer)
+    }
   }, [loadDashboard, refreshLiveData])
 
   return (

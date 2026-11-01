@@ -14,7 +14,7 @@ function getApiBaseUrl(): string {
   return cleanUrl
 }
 
-const apiBaseUrl = getApiBaseUrl()
+export const apiBaseUrl = getApiBaseUrl()
 const AUTH_TOKEN_KEY = 'resto_access_token'
 const AUTH_EMAIL_KEY = 'resto_staff_email'
 export const AUTH_CHANGE_EVENT = 'resto:auth-change'

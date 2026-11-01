@@ -29,6 +29,7 @@ INSTALLED_APPS = [
     "apps.payments",
     "apps.service_requests",
     "apps.dashboard",
+    "apps.realtime",
 ]
 
 MIDDLEWARE = [
@@ -75,6 +76,9 @@ else:
         "default": {
             "ENGINE": "django.db.backends.sqlite3",
             "NAME": BASE_DIR / "db.sqlite3",
+            "OPTIONS": {
+                "timeout": 20,
+            },
         }
     }
 

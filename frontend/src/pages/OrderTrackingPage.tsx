@@ -18,7 +18,7 @@ import { CallWaiterModal } from '../components/modals/CallWaiterModal'
 import { RequestBillModal } from '../components/modals/RequestBillModal'
 import { Order, OrderStage } from '../types/order'
 import { formatCurrency, formatTime } from '../lib/formatters'
-import { getTrackedOrder } from '../services/api'
+import { getTrackedOrder, getApiUrl, RESTAURANT_SLUG } from '../services/api'
 
 const STAGE_CONFIG: Record<
   OrderStage,
@@ -82,27 +82,58 @@ export const OrderTrackingPage: React.FC = () => {
   useEffect(() => {
     if (!orderId) return
     let active = true
-    let timeout: ReturnType<typeof setTimeout>
-    const refresh = async () => {
-      try {
-        const latest = await getTrackedOrder(orderId)
+
+    // 1. Initial order state load
+    getTrackedOrder(orderId)
+      .then((latest) => {
         if (active) {
           setOrder(latest)
           setLoadError(null)
-        }
-      } catch (error) {
-        if (active) setLoadError(error instanceof Error ? error.message : 'Unable to load order status.')
-      } finally {
-        if (active) {
           setIsLoading(false)
-          timeout = setTimeout(refresh, 4000)
+        }
+      })
+      .catch((error) => {
+        if (active) {
+          setLoadError(error instanceof Error ? error.message : 'Unable to load order status.')
+          setIsLoading(false)
+        }
+      })
+
+    // 2. Real-Time SSE stream for instantaneous status transitions (< 50ms)
+    let es: EventSource | null = null
+    try {
+      const streamUrl = `${getApiUrl()}/realtime/stream?restaurantSlug=${encodeURIComponent(
+        RESTAURANT_SLUG
+      )}&orderId=${encodeURIComponent(orderId)}`
+
+      es = new EventSource(streamUrl)
+      es.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data)
+          if (data.eventType === 'order.updated' && (data.entityId === orderId || !data.entityId)) {
+            void getTrackedOrder(orderId).then((fresh) => {
+              if (active) setOrder(fresh)
+            })
+          }
+        } catch {
+          // Ignore keep-alive heartbeats
         }
       }
+    } catch {
+      // EventSource fallback handled by timer below
     }
-    void refresh()
+
+    // 3. Low-frequency safety reconciliation net (every 30s)
+    const fallbackTimer = setInterval(() => {
+      void getTrackedOrder(orderId).then((fresh) => {
+        if (active) setOrder(fresh)
+      }).catch(() => {})
+    }, 30000)
+
     return () => {
       active = false
-      clearTimeout(timeout)
+      if (es) es.close()
+      clearInterval(fallbackTimer)
     }
   }, [orderId])
 

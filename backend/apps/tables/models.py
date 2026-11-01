@@ -22,6 +22,10 @@ class RestaurantTable(models.Model):
         db_table = "restaurant_tables"
         unique_together = ("restaurant", "table_number")
         ordering = ["table_number"]
+        indexes = [
+            models.Index(fields=["restaurant", "status"]),
+            models.Index(fields=["restaurant", "table_number"]),
+        ]
 
     def __str__(self):
         return f"{self.restaurant.name} - Table {self.table_number} ({self.status})"

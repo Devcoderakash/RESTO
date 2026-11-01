@@ -5,6 +5,7 @@ from rest_framework.response import Response
 from rest_framework.exceptions import NotFound, ValidationError
 from apps.service_requests.models import ServiceRequest
 from apps.restaurants.services import get_restaurant_by_slug
+from apps.realtime.bus import publish_event_on_commit
 
 @api_view(["GET", "POST"])
 @permission_classes([AllowAny])
@@ -30,7 +31,7 @@ def service_requests_view(request):
             payment_preference=data.get("paymentPreference") or "",
             status="pending",
         )
-        return Response({
+        res_payload = {
             "id": req_obj.id,
             "status": req_obj.status,
             "table_number": norm_num,
@@ -39,7 +40,9 @@ def service_requests_view(request):
             "requestType": req_obj.request_type,
             "message": req_obj.message,
             "created_at": req_obj.created_at.isoformat(),
-        }, status=201)
+        }
+        publish_event_on_commit(str(restaurant.id), "service_request.created", "service_request", req_obj.id, res_payload)
+        return Response(res_payload, status=201)
 
     elif request.method == "GET":
         requests = ServiceRequest.objects.filter(restaurant=restaurant).order_by("-created_at")[:100]
@@ -80,7 +83,7 @@ def service_request_detail_view(request, pk):
     req_obj.save(update_fields=["status"])
     num = req_obj.table_number.zfill(2) if req_obj.table_number.isdigit() else req_obj.table_number
 
-    return Response({
+    res_payload = {
         "id": req_obj.id,
         "table_number": num,
         "tableNumber": num,
@@ -89,5 +92,7 @@ def service_request_detail_view(request, pk):
         "status": req_obj.status,
         "message": req_obj.message,
         "created_at": req_obj.created_at.isoformat(),
-    })
+    }
+    publish_event_on_commit(str(restaurant.id), "service_request.updated", "service_request", req_obj.id, res_payload)
+    return Response(res_payload)
 

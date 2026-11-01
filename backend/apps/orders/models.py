@@ -56,6 +56,12 @@ class Order(models.Model):
     class Meta:
         db_table = "orders"
         ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["restaurant", "-created_at"]),
+            models.Index(fields=["restaurant", "status"]),
+            models.Index(fields=["restaurant", "idempotency_key"]),
+            models.Index(fields=["restaurant", "table_number"]),
+        ]
 
     def __str__(self):
         return f"Order {self.order_number} - Table {self.table_number} ({self.status})"
@@ -74,6 +80,9 @@ class OrderItem(models.Model):
 
     class Meta:
         db_table = "order_items"
+        indexes = [
+            models.Index(fields=["order", "menu_item_id"]),
+        ]
 
     def __str__(self):
         return f"{self.item_name} x {self.quantity} for Order {self.order.order_number}"

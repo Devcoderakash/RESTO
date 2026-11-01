@@ -2,7 +2,7 @@ import { CartItem } from '../types/cart'
 import { FoodItem, MenuCategory } from '../types/menu'
 import { Order, PaymentMethod, ServiceRequestType } from '../types/order'
 
-function getApiUrl(): string {
+export function getApiUrl(): string {
   const envUrl = import.meta.env.VITE_API_URL || 'https://resto-vc53.onrender.com/api'
   let cleanUrl = envUrl.replace(/\/+$/, '')
   if (!cleanUrl.endsWith('/api')) {

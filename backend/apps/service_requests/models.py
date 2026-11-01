@@ -32,6 +32,10 @@ class ServiceRequest(models.Model):
     class Meta:
         db_table = "service_requests"
         ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["restaurant", "status"]),
+            models.Index(fields=["restaurant", "-created_at"]),
+        ]
 
     def __str__(self):
         return f"Table {self.table_number}: {self.request_type} ({self.status})"

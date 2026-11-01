@@ -16,6 +16,10 @@ class Payment(models.Model):
     class Meta:
         db_table = "payments"
         ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["restaurant", "order"]),
+            models.Index(fields=["restaurant", "-created_at"]),
+        ]
 
     def __str__(self):
         return f"Payment {self.id} - Order {self.order.order_number}: Rs. {self.amount}"

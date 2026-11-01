@@ -49,6 +49,10 @@ class MenuItem(models.Model):
     class Meta:
         db_table = "menu_items"
         ordering = ["sort_order", "name"]
+        indexes = [
+            models.Index(fields=["restaurant", "available"]),
+            models.Index(fields=["restaurant", "category"]),
+        ]
 
     def __str__(self):
         return f"{self.name} (Rs. {self.price})"

@@ -1,14 +1,17 @@
 import hashlib
 import hmac
 import time
+import uuid
 from decimal import Decimal, ROUND_HALF_UP
 from django.conf import settings
-from django.db import transaction
+from django.db import transaction, connection, OperationalError
+import random
 from django.utils import timezone
 from rest_framework.exceptions import ValidationError, NotFound, PermissionDenied
 from apps.orders.models import Order, OrderItem
 from apps.tables.models import RestaurantTable
 from apps.menu.models import MenuItem
+from apps.realtime.bus import publish_event_on_commit
 
 STATUS_TRANSITIONS = {
     "pending": ["confirmed", "cancelled"],
@@ -170,94 +173,115 @@ def format_order_for_dashboard(order: Order) -> dict:
     }
 
 def create_order_atomic(restaurant, data: dict):
+    # Retry on transient database locks under heavy concurrent rush (especially SQLite lock queues)
+    for attempt in range(8):
+        try:
+            return _create_order_inner(restaurant, data)
+        except OperationalError as exc:
+            if "locked" in str(exc).lower() and attempt < 7:
+                time.sleep(0.05 * (1.5 ** attempt) + random.uniform(0.02, 0.06))
+                continue
+            raise
+
+def _create_order_inner(restaurant, data: dict):
     table_num_str = str(data.get("tableNumber") or data.get("table_number", "")).strip()
     norm_table_num = table_num_str.zfill(2) if table_num_str.isdigit() else table_num_str
     idempotency_key = (data.get("idempotencyKey") or data.get("idempotency_key") or "").strip()
 
-    # 1. Idempotency Check
+    # 1. Idempotency Check (Fast indexed lookup)
     if idempotency_key:
-        existing = Order.objects.filter(restaurant=restaurant, idempotency_key=idempotency_key).first()
+        existing = Order.objects.filter(restaurant=restaurant, idempotency_key=idempotency_key).prefetch_related("order_items").first()
         if existing:
             token = generate_tracking_token(restaurant.id, idempotency_key)
             return format_order_for_customer(existing, access_token=token), False
 
+    # 2. Pre-calculate Items and pricing outside transaction (saves database lock time)
+    items_in = data.get("items", [])
+    if not items_in:
+        raise ValidationError({"error": {"code": "VALIDATION_ERROR", "message": "At least one item is required"}})
+
+    # Batch lookup all referenced menu items in a single query
+    item_ids = [str(it.get("menuItemId") or it.get("menu_item_id") or it.get("id", "")) for it in items_in if (it.get("menuItemId") or it.get("menu_item_id") or it.get("id"))]
+    menu_items_map = {str(m.id): m for m in MenuItem.objects.filter(restaurant=restaurant, id__in=item_ids)}
+    missing_ids = [i for i in item_ids if i not in menu_items_map]
+    if missing_ids:
+        for m in MenuItem.objects.filter(id__in=missing_ids):
+            menu_items_map[str(m.id)] = m
+
+    subtotal = Decimal("0.00")
+    prepared_items = []
+
+    for item_data in items_in:
+        menu_item_id = str(item_data.get("menuItemId") or item_data.get("menu_item_id") or item_data.get("id", ""))
+        quantity = int(item_data.get("quantity") or item_data.get("qty", 1))
+        if quantity < 1:
+            quantity = 1
+
+        menu_item = menu_items_map.get(menu_item_id)
+        if menu_item:
+            menu_item_id = str(menu_item.id)
+
+        item_name = menu_item.name if menu_item else "Artisan Dish"
+        unit_price = menu_item.price if menu_item else Decimal("250.00")
+        food_type = menu_item.food_type if menu_item else "veg"
+
+        # Addons
+        selected_addons = item_data.get("selectedAddons") or item_data.get("selected_addons") or []
+        addon_price_sum = Decimal("0.00")
+        cleaned_addons = []
+        for addon in selected_addons:
+            addon_id = addon.get("id", "")
+            addon_name = addon.get("name", "")
+            addon_p = Decimal(str(addon.get("price", 0)))
+            addon_price_sum += addon_p
+            cleaned_addons.append({"id": addon_id, "name": addon_name, "price": float(addon_p)})
+
+        line_unit = unit_price + addon_price_sum
+        line_total = line_unit * Decimal(quantity)
+        subtotal += line_total
+
+        prepared_items.append({
+            "menu_item_id": menu_item_id,
+            "item_name": item_name,
+            "food_type": food_type,
+            "quantity": quantity,
+            "unit_price": line_unit,
+            "total_price": line_total,
+            "selected_addons": cleaned_addons,
+            "special_instructions": item_data.get("specialInstructions") or item_data.get("special_instructions") or "",
+        })
+
+    # Calculate taxes (5% GST: CGST 2.5%, SGST 2.5%)
+    tax_rate = Decimal(str(restaurant.tax_percentage or 5.00))
+    gst_total = (subtotal * tax_rate / Decimal("100")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    cgst = (gst_total / Decimal("2")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    sgst = gst_total - cgst
+    service_charge = Decimal("0.00")
+    final_total = subtotal + gst_total + service_charge
+
+    # 3. Fast Atomic Transaction with Table Row-Level Locking
     with transaction.atomic():
-        # 2. Table validation
-        table_obj = RestaurantTable.objects.filter(
+        table_qs = RestaurantTable.objects.filter(
             restaurant=restaurant,
             table_number__in=[norm_table_num, table_num_str, str(int(norm_table_num)) if norm_table_num.isdigit() else norm_table_num]
-        ).first()
+        )
+        if connection.vendor == "postgresql":
+            table_qs = table_qs.select_for_update()
+        table_obj = table_qs.first()
 
         if not table_obj or table_obj.status == "inactive":
             raise ValidationError({"error": {"code": "TABLE_UNAVAILABLE", "message": "Selected table is inactive or unavailable"}})
 
-        # 3. Pricing & Line items calculation
-        items_in = data.get("items", [])
-        if not items_in:
-            raise ValidationError({"error": {"code": "VALIDATION_ERROR", "message": "At least one item is required"}})
-
-        subtotal = Decimal("0.00")
-        prepared_items = []
-
-        for item_data in items_in:
-            menu_item_id = item_data.get("menuItemId") or item_data.get("menu_item_id") or item_data.get("id")
-            quantity = int(item_data.get("quantity") or item_data.get("qty", 1))
-            if quantity < 1:
-                quantity = 1
-
-            menu_item = MenuItem.objects.filter(restaurant=restaurant, id=menu_item_id).first()
-            if not menu_item:
-                menu_item = MenuItem.objects.filter(id=menu_item_id).first()
-
-            if menu_item:
-                menu_item_id = menu_item.id
-
-            item_name = menu_item.name if menu_item else "Item"
-            unit_price = menu_item.price if menu_item else Decimal("250.00")
-            food_type = menu_item.food_type if menu_item else "veg"
-
-            # Addons
-            selected_addons = item_data.get("selectedAddons") or item_data.get("selected_addons") or []
-            addon_price_sum = Decimal("0.00")
-            cleaned_addons = []
-            for addon in selected_addons:
-                addon_id = addon.get("id", "")
-                addon_name = addon.get("name", "")
-                addon_p = Decimal(str(addon.get("price", 0)))
-                addon_price_sum += addon_p
-                cleaned_addons.append({"id": addon_id, "name": addon_name, "price": float(addon_p)})
-
-            line_unit = unit_price + addon_price_sum
-            line_total = line_unit * Decimal(quantity)
-            subtotal += line_total
-
-            prepared_items.append({
-                "menu_item_id": menu_item_id,
-                "item_name": item_name,
-                "food_type": food_type,
-                "quantity": quantity,
-                "unit_price": line_unit,
-                "total_price": line_total,
-                "selected_addons": cleaned_addons,
-                "special_instructions": item_data.get("specialInstructions") or item_data.get("special_instructions") or "",
-            })
-
-        # Calculate taxes (5% GST: CGST 2.5%, SGST 2.5%)
-        tax_rate = Decimal(str(restaurant.tax_percentage or 5.00))
-        gst_total = (subtotal * tax_rate / Decimal("100")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-        cgst = (gst_total / Decimal("2")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-        sgst = gst_total - cgst
-        service_charge = Decimal("0.00")
-        final_total = subtotal + gst_total + service_charge
-
-        order_id = f"ord-{int(time.time() * 1000)}"
+        # Uniquely identifiable ticket number
+        now_ts = int(time.time() * 1000)
+        order_id = f"ord-{now_ts}-{uuid.uuid4().hex[:6]}"
         order_count = Order.objects.filter(restaurant=restaurant).count()
         order_number = f"DF-{1000 + order_count + 1}"
 
         access_token = generate_tracking_token(restaurant.id, idempotency_key or order_id)
         tracking_hash = hash_tracking_token(access_token)
-
         now_iso = timezone.now().isoformat()
+
         pm = str(data.get("paymentMethod") or data.get("payment_method", "counter")).lower()
         if pm in ["upi", "card", "online"]:
             pm = "upi"
@@ -288,9 +312,10 @@ def create_order_atomic(restaurant, data: dict):
             status_timeline=[{"stage": "received", "timestamp": now_iso}],
         )
 
-        for pi in prepared_items:
-            OrderItem.objects.create(
-                id=f"oi-{order.id}-{pi['menu_item_id']}",
+        # Batch insert all items in a single query
+        OrderItem.objects.bulk_create([
+            OrderItem(
+                id=f"oi-{order.id}-{pi['menu_item_id']}-{idx}",
                 order=order,
                 menu_item_id=pi["menu_item_id"],
                 item_name=pi["item_name"],
@@ -301,8 +326,10 @@ def create_order_atomic(restaurant, data: dict):
                 selected_addons=pi["selected_addons"],
                 special_instructions=pi["special_instructions"],
             )
+            for idx, pi in enumerate(prepared_items)
+        ])
 
-        # Mark table as occupied
+        # Mark table occupied
         if table_obj:
             table_obj.status = "occupied"
             table_obj.save(update_fields=["status"])
@@ -318,47 +345,60 @@ def create_order_atomic(restaurant, data: dict):
             payment_status="completed" if pm == "upi" else "pending",
         )
 
+        dashboard_payload = format_order_for_dashboard(order)
+        # Broadcast real-time event to dashboard strictly on transaction commit
+        publish_event_on_commit(str(restaurant.id), "order.created", "order", str(order.id), dashboard_payload)
+
         return format_order_for_customer(order, access_token=access_token), True
 
 def update_order_status_service(order: Order, new_status: str, reason: str = None) -> Order:
-    valid_next = STATUS_TRANSITIONS.get(order.status, [])
-    if new_status != order.status and new_status not in valid_next:
-        raise ValidationError(
-            {"error": {"code": "INVALID_STATUS_TRANSITION", "message": f"Cannot transition order from {order.status} to {new_status}"}},
-            code="invalid_status"
-        )
+    with transaction.atomic():
+        # Lock order row for update
+        locked_order = Order.objects.select_for_update().filter(id=order.id).first()
+        if not locked_order:
+            raise NotFound({"error": {"code": "NOT_FOUND", "message": "Order not found"}})
 
-    order.status = new_status
-    if reason and new_status == "cancelled":
-        order.cancellation_reason = reason
+        valid_next = STATUS_TRANSITIONS.get(locked_order.status, [])
+        if new_status != locked_order.status and new_status not in valid_next:
+            raise ValidationError(
+                {"error": {"code": "INVALID_STATUS_TRANSITION", "message": f"Cannot transition order from {locked_order.status} to {new_status}"}},
+                code="invalid_status"
+            )
 
-    now_iso = timezone.now().isoformat()
-    timeline = list(order.status_timeline or [])
-    mapped_stage = CUSTOMER_STATUS_MAP.get(new_status, new_status)
-    if not any(t.get("stage") == mapped_stage for t in timeline):
-        timeline.append({"stage": mapped_stage, "timestamp": now_iso})
-    order.status_timeline = timeline
-    order.save()
+        locked_order.status = new_status
+        if reason and new_status == "cancelled":
+            locked_order.cancellation_reason = reason
 
-    # Table release check
-    if new_status in ["completed", "cancelled"]:
-        table = order.table
-        if not table:
-            table = RestaurantTable.objects.filter(
-                restaurant=order.restaurant,
-                table_number=order.table_number
-            ).first()
+        now_iso = timezone.now().isoformat()
+        timeline = list(locked_order.status_timeline or [])
+        mapped_stage = CUSTOMER_STATUS_MAP.get(new_status, new_status)
+        if not any(t.get("stage") == mapped_stage for t in timeline):
+            timeline.append({"stage": mapped_stage, "timestamp": now_iso})
+        locked_order.status_timeline = timeline
+        locked_order.save()
 
-        if table:
-            # Check if there are any other active orders for this table
-            has_active = Order.objects.filter(
-                restaurant=order.restaurant,
-                table_number=order.table_number
-            ).exclude(status__in=["completed", "cancelled"]).exists()
+        # Table release check
+        if new_status in ["completed", "cancelled"]:
+            table = locked_order.table
+            if not table:
+                table = RestaurantTable.objects.filter(
+                    restaurant=locked_order.restaurant,
+                    table_number=locked_order.table_number
+                ).first()
 
-            if not has_active:
-                table.status = "available"
-                table.save(update_fields=["status"])
+            if table:
+                has_active = Order.objects.filter(
+                    restaurant=locked_order.restaurant,
+                    table_number=locked_order.table_number
+                ).exclude(status__in=["completed", "cancelled"]).exclude(id=locked_order.id).exists()
 
-    return order
+                if not has_active:
+                    table.status = "available"
+                    table.save(update_fields=["status"])
+
+        dashboard_payload = format_order_for_dashboard(locked_order)
+        # Broadcast real-time event to listening customer tracking and dashboard
+        publish_event_on_commit(str(locked_order.restaurant.id), "order.updated", "order", str(locked_order.id), dashboard_payload)
+
+        return locked_order
 

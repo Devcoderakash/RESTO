@@ -24,8 +24,8 @@ def orders_collection_view(request):
         status_code = 201 if created else 200
         return Response(payload, status=status_code)
 
-    # GET: Staff list orders
-    orders = Order.objects.filter(restaurant=restaurant).order_by("-created_at")
+    # GET: Staff list orders (with prefetch_related to eliminate N+1 queries)
+    orders = Order.objects.filter(restaurant=restaurant).prefetch_related("order_items").order_by("-created_at")
 
     status_filter = request.query_params.get("status")
     if status_filter:
