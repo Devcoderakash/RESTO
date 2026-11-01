@@ -10,11 +10,13 @@ from apps.dashboard.models import StaffMember
 from apps.orders.models import Order
 from apps.tables.models import RestaurantTable
 from apps.restaurants.services import get_restaurant_by_slug
+from apps.dashboard.permissions import IsStaffOrDashboardAccess
 
 @api_view(["GET"])
-@permission_classes([AllowAny])
+@permission_classes([IsStaffOrDashboardAccess])
 def dashboard_overview(request):
-    restaurant = get_restaurant_by_slug()
+    slug = request.query_params.get("restaurantSlug") or request.data.get("restaurantSlug")
+    restaurant = get_restaurant_by_slug(slug)
     start_of_day = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
 
     today_orders = Order.objects.filter(restaurant=restaurant, created_at__gte=start_of_day).exclude(status="cancelled")
@@ -38,9 +40,10 @@ def dashboard_overview(request):
     })
 
 @api_view(["GET"])
-@permission_classes([AllowAny])
+@permission_classes([IsStaffOrDashboardAccess])
 def dashboard_recent_orders(request):
-    restaurant = get_restaurant_by_slug()
+    slug = request.query_params.get("restaurantSlug") or request.data.get("restaurantSlug")
+    restaurant = get_restaurant_by_slug(slug)
     orders = Order.objects.filter(restaurant=restaurant).order_by("-created_at")[:10]
     data = []
     for o in orders:
@@ -57,9 +60,10 @@ def dashboard_recent_orders(request):
     return Response({"orders": data})
 
 @api_view(["GET"])
-@permission_classes([AllowAny])
+@permission_classes([IsStaffOrDashboardAccess])
 def dashboard_daily_sales(request):
-    restaurant = get_restaurant_by_slug()
+    slug = request.query_params.get("restaurantSlug") or request.data.get("restaurantSlug")
+    restaurant = get_restaurant_by_slug(slug)
     start_14 = timezone.now() - timezone.timedelta(days=14)
     orders = Order.objects.filter(restaurant=restaurant, created_at__gte=start_14).exclude(status="cancelled").order_by("created_at")
 
@@ -75,9 +79,10 @@ def dashboard_daily_sales(request):
     return Response({"sales": sales})
 
 @api_view(["GET", "POST"])
-@permission_classes([AllowAny])
+@permission_classes([IsStaffOrDashboardAccess])
 def staff_list_create(request):
-    restaurant = get_restaurant_by_slug()
+    slug = request.query_params.get("restaurantSlug") or request.data.get("restaurantSlug")
+    restaurant = get_restaurant_by_slug(slug)
     if request.method == "GET":
         staff_members = StaffMember.objects.filter(restaurant=restaurant).order_by("full_name")
         data = []
@@ -118,9 +123,10 @@ def staff_list_create(request):
         }, status=201)
 
 @api_view(["PATCH"])
-@permission_classes([AllowAny])
+@permission_classes([IsStaffOrDashboardAccess])
 def staff_status_toggle(request, pk):
-    restaurant = get_restaurant_by_slug()
+    slug = request.query_params.get("restaurantSlug") or request.data.get("restaurantSlug")
+    restaurant = get_restaurant_by_slug(slug)
     s = StaffMember.objects.filter(restaurant=restaurant, id=pk).first()
     if not s:
         raise NotFound({"error": {"code": "NOT_FOUND", "message": "Staff member not found"}})

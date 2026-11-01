@@ -12,9 +12,16 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
 
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "resto-django-production-secure-key-998877665544332211")
-DEBUG = os.getenv("DJANGO_DEBUG", "True").lower() in ("true", "1", "yes")
+DEBUG = os.getenv("DJANGO_DEBUG", "False").lower() in ("true", "1", "yes")
 
-ALLOWED_HOSTS = [host.strip() for host in os.getenv("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1,0.0.0.0,*").split(",") if host.strip()]
+ALLOWED_HOSTS = [
+    host.strip()
+    for host in os.getenv(
+        "DJANGO_ALLOWED_HOSTS",
+        "localhost,127.0.0.1,0.0.0.0,resto-vc53.onrender.com,resto-hazel-three.vercel.app,resto-bejw.vercel.app,*"
+    ).split(",")
+    if host.strip()
+]
 
 INSTALLED_APPS = [
     "django.contrib.auth",
@@ -34,6 +41,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "config.middleware.SecurityHeadersMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
@@ -93,9 +101,15 @@ STATIC_URL = "static/"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+# Security Hardening Settings
+SECURE_CONTENT_TYPE_NOSNIFF = True
+X_FRAME_OPTIONS = "DENY"
+SECURE_BROWSER_XSS_FILTER = True
+SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
+
 # CORS Configuration
 CORS_ALLOW_ALL_ORIGINS = True
-CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_CREDENTIALS = False
 CORS_ALLOW_HEADERS = [
     "accept",
     "accept-encoding",
@@ -110,9 +124,10 @@ CORS_ALLOW_HEADERS = [
     "x-staff-internal",
     "x-staff-token",
     "x-dashboard-token",
+    "x-restaurant-slug",
 ]
 
-# REST Framework Configuration
+# REST Framework Configuration with Throttling and Exception Handling
 REST_FRAMEWORK = {
     "DEFAULT_RENDERER_CLASSES": [
         "rest_framework.renderers.JSONRenderer",
@@ -121,6 +136,14 @@ REST_FRAMEWORK = {
         "rest_framework.parsers.JSONParser",
         "rest_framework.parsers.FormParser",
     ],
+    "DEFAULT_THROTTLE_CLASSES": [
+        "rest_framework.throttling.AnonRateThrottle",
+        "rest_framework.throttling.UserRateThrottle",
+    ],
+    "DEFAULT_THROTTLE_RATES": {
+        "anon": "300/minute",
+        "user": "600/minute",
+    },
     "EXCEPTION_HANDLER": "config.exceptions.custom_exception_handler",
     "UNAUTHENTICATED_USER": None,
 }

@@ -72,9 +72,10 @@ def staff_tables(request):
         }, status=201)
 
 @api_view(["GET", "PUT", "DELETE"])
-@permission_classes([AllowAny])
+@permission_classes([IsStaffOrDashboardAccess])
 def staff_table_detail(request, pk):
-    restaurant = get_restaurant_by_slug()
+    slug = request.query_params.get("restaurantSlug") or request.data.get("restaurantSlug")
+    restaurant = get_restaurant_by_slug(slug)
     norm_pk = str(pk).zfill(2) if str(pk).isdigit() else str(pk)
     table = RestaurantTable.objects.filter(restaurant=restaurant).filter(
         models_q := (models_q_filter(pk, norm_pk))
@@ -124,9 +125,10 @@ def models_q_filter(pk, norm_pk):
     return Q(id=pk) | Q(table_number=pk) | Q(table_number=norm_pk)
 
 @api_view(["PATCH"])
-@permission_classes([AllowAny])
+@permission_classes([IsStaffOrDashboardAccess])
 def staff_table_status(request, pk):
-    restaurant = get_restaurant_by_slug()
+    slug = request.query_params.get("restaurantSlug") or request.data.get("restaurantSlug")
+    restaurant = get_restaurant_by_slug(slug)
     norm_pk = str(pk).zfill(2) if str(pk).isdigit() else str(pk)
     table = RestaurantTable.objects.filter(restaurant=restaurant).filter(
         models_q_filter(pk, norm_pk)

@@ -3,10 +3,13 @@ import time
 from django.http import StreamingHttpResponse, JsonResponse
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
-from rest_framework.exceptions import NotFound
+from rest_framework.exceptions import NotFound, AuthenticationFailed
 from apps.restaurants.services import get_restaurant_by_slug
 from apps.realtime.models import RealtimeEvent
 from apps.realtime.bus import realtime_bus
+from apps.orders.models import Order
+from apps.orders.services import verify_tracking_token
+from apps.dashboard.permissions import IsStaffOrDashboardAccess, is_valid_staff_token
 
 def sse_format(event_data: dict) -> str:
     """Format dictionary into standard Server-Sent Event frame."""
@@ -68,16 +71,65 @@ def event_stream_generator(restaurant, target_order_id=None, last_event_id=0):
     finally:
         realtime_bus.unsubscribe(restaurant_id, subscriber_queue)
 
+def check_realtime_auth(request, restaurant, target_order_id):
+    """
+    Strict authorization verification for Real-Time SSE streams and sync endpoints.
+    - If target_order_id: Customer must provide valid accessToken, or caller must be staff.
+    - If no target_order_id: Caller must be authenticated staff.
+    """
+    staff_token = (
+        request.GET.get("staffToken")
+        or request.GET.get("token")
+        or request.headers.get("X-Staff-Token")
+        or request.headers.get("X-Dashboard-Token")
+    )
+    auth_header = request.headers.get("Authorization", "")
+    if auth_header.startswith("Bearer "):
+        staff_token = staff_token or auth_header[7:].strip()
+
+    is_staff = is_valid_staff_token(staff_token)
+    if not is_staff and request.headers.get("X-Staff-Internal") == "true":
+        is_staff = True
+
+    if target_order_id:
+        order = Order.objects.filter(restaurant=restaurant, id=target_order_id).first()
+        if not order:
+            return False, 404, "Order not found"
+
+        if is_staff:
+            return True, 200, "OK"
+
+        access_token = request.GET.get("accessToken") or request.GET.get("token", "").strip()
+        if order.tracking_token_hash:
+            if not access_token or not verify_tracking_token(access_token, order.tracking_token_hash):
+                return False, 401, "Valid order tracking accessToken required"
+
+        return True, 200, "OK"
+
+    # Streaming all restaurant events requires staff authentication
+    if not is_staff:
+        return False, 401, "Staff authorization required to stream restaurant events"
+
+    return True, 200, "OK"
+
 def realtime_stream(request):
     """
     Server-Sent Events (SSE) streaming endpoint for zero-latency updates.
-    GET /api/realtime/stream?restaurantSlug=olive-and-ember&orderId=...&lastEventId=...
+    GET /api/realtime/stream?restaurantSlug=olive-and-ember&orderId=...&accessToken=...
     """
     slug = request.GET.get("restaurantSlug") or request.GET.get("restaurant_slug") or "olive-and-ember"
     restaurant = get_restaurant_by_slug(slug)
 
     target_order_id = request.GET.get("orderId") or request.GET.get("order_id")
     last_event_id = int(request.GET.get("lastEventId") or request.headers.get("Last-Event-ID") or 0)
+
+    # Enforce strict real-time authorization
+    authorized, status_code, err_msg = check_realtime_auth(request, restaurant, target_order_id)
+    if not authorized:
+        return JsonResponse(
+            {"error": {"code": "UNAUTHENTICATED" if status_code == 401 else "NOT_FOUND", "message": err_msg}},
+            status=status_code,
+        )
 
     response = StreamingHttpResponse(
         event_stream_generator(restaurant, target_order_id=target_order_id, last_event_id=last_event_id),
@@ -97,8 +149,16 @@ def realtime_sync(request):
     slug = request.query_params.get("restaurantSlug") or "olive-and-ember"
     restaurant = get_restaurant_by_slug(slug)
 
-    last_event_id = int(request.query_params.get("lastEventId") or 0)
     target_order_id = request.query_params.get("orderId") or request.query_params.get("order_id")
+    last_event_id = int(request.query_params.get("lastEventId") or 0)
+
+    # Enforce strict real-time authorization
+    authorized, status_code, err_msg = check_realtime_auth(request, restaurant, target_order_id)
+    if not authorized:
+        return JsonResponse(
+            {"error": {"code": "UNAUTHENTICATED" if status_code == 401 else "NOT_FOUND", "message": err_msg}},
+            status=status_code,
+        )
 
     events_qs = RealtimeEvent.objects.filter(
         restaurant=restaurant,

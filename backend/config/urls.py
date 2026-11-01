@@ -25,9 +25,9 @@ urlpatterns = [
     # Restaurants
     path("api/restaurants", restaurant_views.restaurant_list, name="restaurant-list"),
     path("api/restaurants/info", restaurant_views.restaurant_detail, kwargs={"slug": "info"}, name="restaurant-info"),
-    path("api/restaurants/<str:slug>", restaurant_views.restaurant_detail, name="restaurant-detail"),
     path("api/restaurants/settings", restaurant_views.update_restaurant_settings, name="update-restaurant-settings"),
     path("api/staff/restaurant-settings", restaurant_views.staff_restaurant_settings, name="staff-restaurant-settings"),
+    path("api/restaurants/<str:slug>", restaurant_views.restaurant_detail, name="restaurant-detail"),
 
     # Tables
     path("api/tables/availability", table_views.table_availability, name="table-availability"),
@@ -82,6 +82,7 @@ urlpatterns = [
     # Direct compatibility routes (in case client omits /api prefix)
     path("restaurants", restaurant_views.restaurant_list),
     path("restaurants/info", restaurant_views.restaurant_detail, kwargs={"slug": "info"}),
+    path("restaurants/settings", restaurant_views.update_restaurant_settings),
     path("restaurants/<str:slug>", restaurant_views.restaurant_detail),
     path("tables/availability", table_views.table_availability),
     path("tables", table_views.staff_tables),

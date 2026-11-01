@@ -102,9 +102,13 @@ export const OrderTrackingPage: React.FC = () => {
     // 2. Real-Time SSE stream for instantaneous status transitions (< 50ms)
     let es: EventSource | null = null
     try {
+      const trackingToken =
+        new URLSearchParams(window.location.search).get('accessToken') ||
+        sessionStorage.getItem(`order-tracking:${orderId}`) ||
+        ''
       const streamUrl = `${getApiUrl()}/realtime/stream?restaurantSlug=${encodeURIComponent(
         RESTAURANT_SLUG
-      )}&orderId=${encodeURIComponent(orderId)}`
+      )}&orderId=${encodeURIComponent(orderId)}${trackingToken ? `&accessToken=${encodeURIComponent(trackingToken)}` : ''}`
 
       es = new EventSource(streamUrl)
       es.onmessage = (event) => {

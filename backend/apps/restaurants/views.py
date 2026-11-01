@@ -3,6 +3,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from apps.restaurants.models import Restaurant
 from apps.restaurants.services import get_restaurant_by_slug
+from apps.dashboard.permissions import IsStaffOrDashboardAccess
 
 @api_view(["GET"])
 @permission_classes([AllowAny])
@@ -39,9 +40,10 @@ def restaurant_list(request):
     return Response({"restaurants": list(restaurants)})
 
 @api_view(["GET"])
-@permission_classes([AllowAny])
+@permission_classes([IsStaffOrDashboardAccess])
 def staff_restaurant_settings(request):
-    restaurant = get_restaurant_by_slug()
+    slug = request.query_params.get("restaurantSlug") or request.query_params.get("restaurant_slug")
+    restaurant = get_restaurant_by_slug(slug)
     return Response({
         "id": restaurant.id,
         "slug": restaurant.slug,
@@ -60,9 +62,10 @@ def staff_restaurant_settings(request):
     })
 
 @api_view(["PUT"])
-@permission_classes([AllowAny])
+@permission_classes([IsStaffOrDashboardAccess])
 def update_restaurant_settings(request):
-    restaurant = get_restaurant_by_slug()
+    slug = request.data.get("restaurantSlug") or request.data.get("restaurant_slug")
+    restaurant = get_restaurant_by_slug(slug)
     data = request.data
     for field in ["name", "description", "address", "phone", "email", "logo_url", "wifi_ssid", "wifi_password", "currency", "timezone"]:
         if field in data:

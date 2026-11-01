@@ -6,6 +6,7 @@ from rest_framework.response import Response
 from rest_framework.exceptions import NotFound, ValidationError
 from apps.menu.models import Category, MenuItem
 from apps.restaurants.services import get_restaurant_by_slug
+from apps.dashboard.permissions import IsStaffOrDashboardAccess
 
 def format_menu_item(item: MenuItem, category_map: dict = None) -> dict:
     cat_name = category_map.get(item.category_id, "Uncategorized") if category_map and item.category_id else (item.category.name if item.category else "Uncategorized")
@@ -72,9 +73,10 @@ def public_categories(request):
     })
 
 @api_view(["GET", "POST"])
-@permission_classes([AllowAny])
+@permission_classes([IsStaffOrDashboardAccess])
 def staff_menu(request):
-    restaurant = get_restaurant_by_slug()
+    slug = request.query_params.get("restaurantSlug") or request.data.get("restaurantSlug")
+    restaurant = get_restaurant_by_slug(slug)
     if request.method == "GET":
         categories = list(Category.objects.filter(restaurant=restaurant).order_by("sort_order"))
         category_map = {c.id: c.name for c in categories}
@@ -110,9 +112,10 @@ def staff_menu(request):
         return Response(format_menu_item(item), status=201)
 
 @api_view(["PATCH", "DELETE"])
-@permission_classes([AllowAny])
+@permission_classes([IsStaffOrDashboardAccess])
 def staff_menu_item_detail(request, pk):
-    restaurant = get_restaurant_by_slug()
+    slug = request.query_params.get("restaurantSlug") or request.data.get("restaurantSlug")
+    restaurant = get_restaurant_by_slug(slug)
     item = MenuItem.objects.filter(restaurant=restaurant, id=pk).first()
     if not item:
         raise NotFound({"error": {"code": "NOT_FOUND", "message": "Menu item not found"}})
@@ -141,9 +144,10 @@ def staff_menu_item_detail(request, pk):
         return Response(status=204)
 
 @api_view(["PATCH"])
-@permission_classes([AllowAny])
+@permission_classes([IsStaffOrDashboardAccess])
 def staff_menu_item_availability(request, pk):
-    restaurant = get_restaurant_by_slug()
+    slug = request.query_params.get("restaurantSlug") or request.data.get("restaurantSlug")
+    restaurant = get_restaurant_by_slug(slug)
     item = MenuItem.objects.filter(restaurant=restaurant, id=pk).first()
     if not item:
         raise NotFound({"error": {"code": "NOT_FOUND", "message": "Menu item not found"}})
@@ -155,9 +159,10 @@ def staff_menu_item_availability(request, pk):
     return Response(format_menu_item(item))
 
 @api_view(["GET", "POST"])
-@permission_classes([AllowAny])
+@permission_classes([IsStaffOrDashboardAccess])
 def staff_categories(request):
-    restaurant = get_restaurant_by_slug()
+    slug = request.query_params.get("restaurantSlug") or request.data.get("restaurantSlug")
+    restaurant = get_restaurant_by_slug(slug)
     if request.method == "GET":
         categories = Category.objects.filter(restaurant=restaurant).order_by("sort_order")
         return Response({
@@ -189,9 +194,10 @@ def staff_categories(request):
     }, status=201)
 
 @api_view(["PUT", "DELETE"])
-@permission_classes([AllowAny])
+@permission_classes([IsStaffOrDashboardAccess])
 def staff_category_detail(request, pk):
-    restaurant = get_restaurant_by_slug()
+    slug = request.query_params.get("restaurantSlug") or request.data.get("restaurantSlug")
+    restaurant = get_restaurant_by_slug(slug)
     cat = Category.objects.filter(restaurant=restaurant, id=pk).first()
     if not cat:
         raise NotFound({"error": {"code": "NOT_FOUND", "message": "Category not found"}})

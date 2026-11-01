@@ -6,6 +6,7 @@ from rest_framework.exceptions import NotFound, ValidationError
 from apps.service_requests.models import ServiceRequest
 from apps.restaurants.services import get_restaurant_by_slug
 from apps.realtime.bus import publish_event_on_commit
+from apps.dashboard.permissions import IsStaffOrDashboardAccess
 
 @api_view(["GET", "POST"])
 @permission_classes([AllowAny])
@@ -45,6 +46,7 @@ def service_requests_view(request):
         return Response(res_payload, status=201)
 
     elif request.method == "GET":
+        IsStaffOrDashboardAccess().has_permission(request, None)
         requests = ServiceRequest.objects.filter(restaurant=restaurant).order_by("-created_at")[:100]
         data = []
         for r in requests:
@@ -68,9 +70,10 @@ def service_requests_view(request):
         return Response({"serviceRequests": data, "requests": data})
 
 @api_view(["PATCH"])
-@permission_classes([AllowAny])
+@permission_classes([IsStaffOrDashboardAccess])
 def service_request_detail_view(request, pk):
-    restaurant = get_restaurant_by_slug()
+    slug = request.query_params.get("restaurantSlug") or request.data.get("restaurantSlug")
+    restaurant = get_restaurant_by_slug(slug)
     req_obj = ServiceRequest.objects.filter(restaurant=restaurant, id=pk).first()
     if not req_obj:
         raise NotFound({"error": {"code": "NOT_FOUND", "message": "Service request not found"}})

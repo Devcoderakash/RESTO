@@ -1,5 +1,8 @@
+import logging
 from rest_framework.views import exception_handler
 from rest_framework.response import Response
+
+logger = logging.getLogger("django.request")
 
 def custom_exception_handler(exc, context):
     response = exception_handler(exc, context)
@@ -22,9 +25,20 @@ def custom_exception_handler(exc, context):
 
         # Normalize 401 unauthenticated
         code = getattr(exc, "default_code", "ERROR").upper()
-        if "bearer access token" in message.lower() or "authentication" in message.lower() or "unauthenticated" in message.lower():
+        if (
+            "bearer access token" in message.lower()
+            or "authentication" in message.lower()
+            or "unauthenticated" in message.lower()
+            or "invalid staff token" in message.lower()
+        ):
             code = "UNAUTHENTICATED"
             response.status_code = 401
+        elif response.status_code == 403:
+            code = "FORBIDDEN"
+        elif response.status_code == 404:
+            code = "NOT_FOUND"
+        elif response.status_code == 429:
+            code = "RATE_LIMITED"
 
         response.data = {
             "error": {
@@ -33,5 +47,17 @@ def custom_exception_handler(exc, context):
             },
             "message": message,
         }
+        return response
 
-    return response
+    # Handle unhandled 500 exceptions securely without leaking internal stack traces
+    logger.exception("Unhandled server exception encountered: %s", exc)
+    return Response(
+        {
+            "error": {
+                "code": "INTERNAL_SERVER_ERROR",
+                "message": "An unexpected server error occurred. Please try again later.",
+            },
+            "message": "An unexpected server error occurred. Please try again later.",
+        },
+        status=500,
+    )

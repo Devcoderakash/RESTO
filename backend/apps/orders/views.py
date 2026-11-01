@@ -57,10 +57,17 @@ def customer_order_tracking_view(request, pk):
     if not order:
         raise NotFound({"error": {"code": "NOT_FOUND", "message": "Order not found"}})
 
-    # Token verification
-    if order.tracking_token_hash and access_token:
-        if not verify_tracking_token(access_token, order.tracking_token_hash):
-            raise NotFound({"error": {"code": "NOT_FOUND", "message": "Order not found"}})
+    # Token verification: strictly prevent BOLA/IDOR data harvesting
+    if order.tracking_token_hash:
+        is_staff = False
+        try:
+            is_staff = IsStaffOrDashboardAccess().has_permission(request, None)
+        except Exception:
+            is_staff = False
+
+        if not is_staff:
+            if not access_token or not verify_tracking_token(access_token, order.tracking_token_hash):
+                raise NotFound({"error": {"code": "NOT_FOUND", "message": "Order not found"}})
 
     return Response(format_order_for_customer(order))
 

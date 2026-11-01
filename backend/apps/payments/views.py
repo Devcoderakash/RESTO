@@ -59,9 +59,10 @@ def payments_view(request):
         }, status=201)
 
 @api_view(["PATCH"])
-@permission_classes([AllowAny])
+@permission_classes([IsStaffOrDashboardAccess])
 def payment_status_view(request, pk):
-    restaurant = get_restaurant_by_slug()
+    slug = request.query_params.get("restaurantSlug") or request.data.get("restaurantSlug")
+    restaurant = get_restaurant_by_slug(slug)
     payment = Payment.objects.filter(restaurant=restaurant, id=pk).first()
     if not payment:
         raise NotFound({"error": {"code": "NOT_FOUND", "message": "Payment not found"}})

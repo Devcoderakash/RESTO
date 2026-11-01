@@ -77,3 +77,4 @@ def publish_event_on_commit(restaurant_id: str, event_type: str, entity_type: st
 
     transaction.on_commit(_do_publish)
     return event_obj
+

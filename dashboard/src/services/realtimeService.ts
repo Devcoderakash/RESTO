@@ -32,9 +32,10 @@ class DashboardRealtimeService {
 
   private initStream() {
     this.isConnecting = true
+    const staffToken = sessionStorage.getItem('resto_access_token') || 'demo-staff-token-manager'
     const url = `${apiBaseUrl}/realtime/stream?restaurantSlug=${encodeURIComponent(
       restaurantSlug
-    )}&lastEventId=${this.lastEventId}`
+    )}&lastEventId=${this.lastEventId}&staffToken=${encodeURIComponent(staffToken)}`
 
     try {
       this.eventSource = new EventSource(url)
@@ -256,9 +257,10 @@ class DashboardRealtimeService {
 
   public async syncMissedEvents() {
     try {
+      const staffToken = sessionStorage.getItem('resto_access_token') || 'demo-staff-token-manager'
       const url = `${apiBaseUrl}/realtime/sync?restaurantSlug=${encodeURIComponent(
         restaurantSlug
-      )}&lastEventId=${this.lastEventId}`
+      )}&lastEventId=${this.lastEventId}&staffToken=${encodeURIComponent(staffToken)}`
       const res = await fetch(url)
       if (!res.ok) return
       const data = await res.json()

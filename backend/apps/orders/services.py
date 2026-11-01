@@ -199,6 +199,8 @@ def _create_order_inner(restaurant, data: dict):
     items_in = data.get("items", [])
     if not items_in:
         raise ValidationError({"error": {"code": "VALIDATION_ERROR", "message": "At least one item is required"}})
+    if len(items_in) > 50:
+        raise ValidationError({"error": {"code": "VALIDATION_ERROR", "message": "Maximum 50 items per order allowed"}})
 
     # Batch lookup all referenced menu items in a single query
     item_ids = [str(it.get("menuItemId") or it.get("menu_item_id") or it.get("id", "")) for it in items_in if (it.get("menuItemId") or it.get("menu_item_id") or it.get("id"))]
@@ -214,8 +216,8 @@ def _create_order_inner(restaurant, data: dict):
     for item_data in items_in:
         menu_item_id = str(item_data.get("menuItemId") or item_data.get("menu_item_id") or item_data.get("id", ""))
         quantity = int(item_data.get("quantity") or item_data.get("qty", 1))
-        if quantity < 1:
-            quantity = 1
+        if quantity < 1 or quantity > 50:
+            raise ValidationError({"error": {"code": "VALIDATION_ERROR", "message": "Item quantity must be between 1 and 50"}})
 
         menu_item = menu_items_map.get(menu_item_id)
         if menu_item:
@@ -296,8 +298,8 @@ def _create_order_inner(restaurant, data: dict):
             table_number=norm_table_num,
             idempotency_key=idempotency_key or order_id,
             tracking_token_hash=tracking_hash,
-            customer_name=data.get("customerName") or data.get("customer_name") or f"Guest Table {norm_table_num}",
-            customer_phone=data.get("customerPhone") or data.get("customer_phone") or "",
+            customer_name=str(data.get("customerName") or data.get("customer_name") or f"Guest Table {norm_table_num}").strip()[:100],
+            customer_phone=str(data.get("customerPhone") or data.get("customer_phone") or "").strip()[:20],
             subtotal=subtotal,
             cgst=cgst,
             sgst=sgst,
@@ -307,7 +309,7 @@ def _create_order_inner(restaurant, data: dict):
             payment_method=pm,
             payment_status="completed" if pm == "upi" else "pending",
             status="pending",
-            order_notes=data.get("specialInstructions") or data.get("orderNotes") or data.get("special_instructions") or "",
+            order_notes=str(data.get("specialInstructions") or data.get("orderNotes") or data.get("special_instructions") or "").strip()[:500],
             estimated_time_minutes=20,
             status_timeline=[{"stage": "received", "timestamp": now_iso}],
         )
