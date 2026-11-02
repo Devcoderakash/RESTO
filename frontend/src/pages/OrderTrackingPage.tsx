@@ -73,11 +73,31 @@ const STAGES: OrderStage[] = ['received', 'accepted', 'preparing', 'ready', 'ser
 export const OrderTrackingPage: React.FC = () => {
   const { orderId } = useParams<{ orderId: string }>()
 
-  const [order, setOrder] = useState<Order>()
-  const [isLoading, setIsLoading] = useState(true)
+  const getCachedOrder = (): Order | undefined => {
+    if (!orderId || typeof window === 'undefined') return undefined
+    try {
+      const raw = sessionStorage.getItem(`resto_order_cache:${orderId}`) || localStorage.getItem(`resto_order_cache:${orderId}`)
+      if (raw) return JSON.parse(raw)
+    } catch {}
+    return undefined
+  }
+
+  const initialCached = getCachedOrder()
+  const [order, setOrder] = useState<Order | undefined>(initialCached)
+  const [isLoading, setIsLoading] = useState(!initialCached)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [isWaiterModalOpen, setIsWaiterModalOpen] = useState(false)
   const [isBillModalOpen, setIsBillModalOpen] = useState(false)
+
+  const updateOrderAndCache = (freshOrder: Order) => {
+    setOrder(freshOrder)
+    if (orderId) {
+      try {
+        sessionStorage.setItem(`resto_order_cache:${orderId}`, JSON.stringify(freshOrder))
+        localStorage.setItem(`resto_order_cache:${orderId}`, JSON.stringify(freshOrder))
+      } catch {}
+    }
+  }
 
   useEffect(() => {
     if (!orderId) return
@@ -87,14 +107,17 @@ export const OrderTrackingPage: React.FC = () => {
     getTrackedOrder(orderId)
       .then((latest) => {
         if (active) {
-          setOrder(latest)
+          updateOrderAndCache(latest)
           setLoadError(null)
           setIsLoading(false)
         }
       })
       .catch((error) => {
         if (active) {
-          setLoadError(error instanceof Error ? error.message : 'Unable to load order status.')
+          // If we have cached order, preserve it and do not overwrite with error
+          if (!order) {
+            setLoadError(error instanceof Error ? error.message : 'Unable to load order status.')
+          }
           setIsLoading(false)
         }
       })
@@ -116,7 +139,7 @@ export const OrderTrackingPage: React.FC = () => {
           const data = JSON.parse(event.data)
           if (data.eventType === 'order.updated' && (data.entityId === orderId || !data.entityId)) {
             void getTrackedOrder(orderId).then((fresh) => {
-              if (active) setOrder(fresh)
+              if (active) updateOrderAndCache(fresh)
             })
           }
         } catch {
@@ -130,7 +153,7 @@ export const OrderTrackingPage: React.FC = () => {
     // 3. Low-frequency safety reconciliation net (every 30s)
     const fallbackTimer = setInterval(() => {
       void getTrackedOrder(orderId).then((fresh) => {
-        if (active) setOrder(fresh)
+        if (active) updateOrderAndCache(fresh)
       }).catch(() => {})
     }, 30000)
 

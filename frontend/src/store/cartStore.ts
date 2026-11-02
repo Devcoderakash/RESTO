@@ -139,14 +139,14 @@ export const useCartStore = create<CartState>()(
       },
 
       getBreakdown: () => {
-        const subtotal = get().items.reduce((total, item) => total + item.lineTotal, 0)
-        // 5% GST total: 2.5% CGST + 2.5% SGST
-        const cgst = Math.round(subtotal * 0.025)
-        const sgst = Math.round(subtotal * 0.025)
-        const gstTotal = cgst + sgst
-        // 5% Service charge
-        const serviceCharge = Math.round(subtotal * 0.05)
-        const finalTotal = subtotal + gstTotal + serviceCharge
+        const subtotal = Number(get().items.reduce((total, item) => total + item.lineTotal, 0).toFixed(2))
+        // 5% GST: 2.5% CGST + 2.5% SGST (calculated to exact paisa matching backend)
+        const gstTotal = Number((subtotal * 0.05).toFixed(2))
+        const cgst = Number((gstTotal / 2).toFixed(2))
+        const sgst = Number((gstTotal - cgst).toFixed(2))
+        // Service charge is 0% by default at The Olive & Ember
+        const serviceCharge = 0
+        const finalTotal = Number((subtotal + gstTotal + serviceCharge).toFixed(2))
 
         return {
           subtotal,

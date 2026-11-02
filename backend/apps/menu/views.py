@@ -1,6 +1,8 @@
+import os
 import uuid
 from decimal import Decimal
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, parser_classes
+from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.exceptions import NotFound, ValidationError
@@ -8,6 +10,7 @@ from apps.menu.models import Category, MenuItem
 from apps.restaurants.services import get_restaurant_by_slug
 from apps.dashboard.permissions import IsStaffOrDashboardAccess
 from apps.realtime.bus import publish_event_on_commit
+from config.supabase import upload_image_to_storage, is_supabase_configured
 
 def format_menu_item(item: MenuItem, category_map: dict = None) -> dict:
     cat_name = category_map.get(item.category_id, "Uncategorized") if category_map and item.category_id else (item.category.name if item.category else "Uncategorized")
@@ -237,3 +240,51 @@ def staff_category_detail(request, pk):
         cat.delete()
         publish_event_on_commit(str(restaurant.id), "category.deleted", "category", str(cat_id), {"id": cat_id})
         return Response(status=204)
+
+@api_view(["POST"])
+@permission_classes([IsStaffOrDashboardAccess])
+@parser_classes([MultiPartParser, FormParser])
+def upload_image_view(request):
+    """
+    Accepts an image file (max 5MB, JPG/PNG/WEBP/GIF),
+    uploads to Supabase Storage ('resto-media' bucket),
+    and returns {'url': public_url}.
+    """
+    uploaded_file = request.FILES.get("file") or request.FILES.get("image")
+    if not uploaded_file:
+        raise ValidationError({"error": {"code": "FILE_REQUIRED", "message": "No file uploaded. Please provide a file in the 'file' field."}})
+
+    # Validate size: 5MB limit
+    max_size = 5 * 1024 * 1024
+    if uploaded_file.size > max_size:
+        raise ValidationError({"error": {"code": "FILE_TOO_LARGE", "message": f"File size ({uploaded_file.size} bytes) exceeds 5MB limit."}})
+
+    # Validate content type
+    allowed_types = ["image/jpeg", "image/png", "image/webp", "image/gif"]
+    content_type = uploaded_file.content_type
+    ext = os.path.splitext(uploaded_file.name)[1].lower() if uploaded_file.name else ".jpg"
+    ext_to_mime = {
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+        ".png": "image/png",
+        ".webp": "image/webp",
+        ".gif": "image/gif",
+    }
+    if content_type not in allowed_types:
+        if ext in ext_to_mime:
+            content_type = ext_to_mime[ext]
+        else:
+            raise ValidationError({"error": {"code": "INVALID_FILE_TYPE", "message": f"Unsupported file type '{content_type}'. Allowed types: JPG, PNG, WEBP, GIF."}})
+
+    file_bytes = uploaded_file.read()
+    unique_name = f"menu-items/{uuid.uuid4().hex[:12]}{ext}"
+
+    try:
+        url = upload_image_to_storage(file_bytes, unique_name, content_type)
+        return Response({"url": url, "path": unique_name, "size": uploaded_file.size}, status=201)
+    except Exception as ex:
+        return Response(
+            {"error": {"code": "STORAGE_UPLOAD_ERROR", "message": str(ex)}},
+            status=500
+        )
+

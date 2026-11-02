@@ -402,6 +402,34 @@ export const dashboardApi = {
   async deleteMenuItem(itemId: string): Promise<void> {
     await request(`/menu/${encodeURIComponent(itemId)}`, { method: 'DELETE' })
   },
+  async uploadImage(file: File): Promise<{ url: string; path?: string; size?: number }> {
+    const token = sessionStorage.getItem(AUTH_TOKEN_KEY) || DEFAULT_STAFF_TOKEN
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('restaurantSlug', restaurantSlug)
+
+    const response = await fetch(apiUrl('/upload'), {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        Authorization: `Bearer ${token}`,
+        'X-Staff-Internal': 'true',
+      },
+      body: formData,
+    })
+
+    if (!response.ok) {
+      const body = await response.text()
+      let message = body || `Image upload failed (${response.status})`
+      try {
+        const parsed = JSON.parse(body)
+        message = parsed?.error?.message ?? parsed?.message ?? message
+      } catch {}
+      throw new Error(message)
+    }
+
+    return response.json()
+  },
   async createCategory(input: Omit<Category, 'id' | 'itemCount'>): Promise<void> {
     await request('/categories', {
       method: 'POST',
@@ -525,3 +553,6 @@ export const dashboardApi = {
     })
   },
 }
+
+export const api = dashboardApi
+

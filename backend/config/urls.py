@@ -71,6 +71,8 @@ urlpatterns = [
     path("api/tables/<str:pk>/status/", table_views.staff_table_status),
 
     # Menu & Categories
+    path("api/upload", menu_views.upload_image_view, name="upload-image"),
+    path("api/upload/", menu_views.upload_image_view),
     path("api/menu", menu_views.public_menu, name="public-menu"),
     path("api/menu/categories", menu_views.public_categories, name="public-categories"),
     path("api/staff/menu", menu_views.staff_menu, name="staff-menu"),
@@ -91,12 +93,15 @@ urlpatterns = [
 
     # Service Requests (Waiter calls & bill requests)
     path("api/service-requests", service_views.service_requests_view, name="service-requests"),
+    path("api/service-requests/", service_views.service_requests_view),
     path("api/service-requests/<str:pk>", service_views.service_request_detail_view, name="service-request-detail"),
+    path("api/service-requests/<str:pk>/", service_views.service_request_detail_view),
 
     # Payments
     path("api/payments", payment_views.payments_view, name="payments"),
     path("api/payments/", payment_views.payments_view),
     path("api/payments/<str:pk>/status", payment_views.payment_status_view, name="payment-status"),
+    path("api/payments/<str:pk>/status/", payment_views.payment_status_view),
 
     # Real-Time SSE Stream & State Sync
     path("api/realtime/stream", realtime_views.realtime_stream, name="realtime-stream"),
@@ -131,6 +136,8 @@ urlpatterns = [
     path("tables/<str:pk>/", table_views.staff_table_detail),
     path("tables/<str:pk>/status", table_views.staff_table_status),
     path("tables/<str:pk>/status/", table_views.staff_table_status),
+    path("upload", menu_views.upload_image_view),
+    path("upload/", menu_views.upload_image_view),
     path("menu", menu_views.public_menu),
     path("menu/categories", menu_views.public_categories),
     path("staff/menu", menu_views.staff_menu),
@@ -144,8 +151,11 @@ urlpatterns = [
     path("orders/<str:pk>/status", order_views.staff_order_status_view),
     path("orders/<str:pk>/status/", order_views.staff_order_status_view),
     path("service-requests", service_views.service_requests_view),
+    path("service-requests/", service_views.service_requests_view),
     path("service-requests/<str:pk>", service_views.service_request_detail_view),
+    path("service-requests/<str:pk>/", service_views.service_request_detail_view),
     path("payments", payment_views.payments_view),
     path("payments/", payment_views.payments_view),
     path("payments/<str:pk>/status", payment_views.payment_status_view),
+    path("payments/<str:pk>/status/", payment_views.payment_status_view),
 ]

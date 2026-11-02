@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   CreditCard,
   Search,
@@ -30,14 +30,21 @@ import { toast } from 'sonner'
 export const PaymentsPage: React.FC = () => {
   const {
     transactions,
+    isLoading,
+    isRefreshing,
     searchQuery,
     methodFilter,
     statusFilter,
     setSearchQuery,
     setMethodFilter,
     setStatusFilter,
+    fetchPayments,
     refundTransaction,
   } = usePaymentStore()
+
+  useEffect(() => {
+    void fetchPayments()
+  }, [fetchPayments])
 
   const [selectedTxn, setSelectedTxn] = useState<PaymentTransaction | null>(null)
   const [refundModalTxn, setRefundModalTxn] = useState<PaymentTransaction | null>(null)
@@ -107,8 +114,14 @@ export const PaymentsPage: React.FC = () => {
           <h2 className="text-xl sm:text-2xl font-bold font-serif text-charcoal">
             Payment Management
           </h2>
-          <p className="text-xs sm:text-sm text-charcoal-muted mt-0.5">
-            Audit digital settlements, cash reconciliations, terminal receipts, and refund requests.
+          <p className="text-xs sm:text-sm text-charcoal-muted mt-0.5 flex items-center gap-2">
+            <span>Audit digital settlements, cash reconciliations, terminal receipts, and refund requests.</span>
+            {isRefreshing && (
+              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-50 text-amber-800 border border-amber-200/60 animate-pulse">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping" />
+                Syncing live payments…
+              </span>
+            )}
           </p>
         </div>
 

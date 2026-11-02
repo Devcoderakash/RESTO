@@ -1,11 +1,12 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { Modal } from '../ui/Modal'
 import { Button } from '../ui/Button'
 import { Input, Textarea } from '../ui/Input'
 import { Select } from '../ui/Select'
 import { Switch } from '../ui/Switch'
 import { MenuItem, Category } from '../../types'
-import { Upload, Image as ImageIcon, Plus, Trash2 } from 'lucide-react'
+import { Upload, Image as ImageIcon, Plus, Trash2, Loader2 } from 'lucide-react'
+import { api } from '../../services/api'
 
 export interface MenuItemModalProps {
   item: MenuItem | null
@@ -40,6 +41,9 @@ export const MenuItemModal: React.FC<MenuItemModalProps> = ({
   const [prepTimeMinutes, setPrepTimeMinutes] = useState('15')
   const [calories, setCalories] = useState('')
   const [imageUrl, setImageUrl] = useState(sampleImages[0])
+  const [isUploading, setIsUploading] = useState(false)
+  const [uploadError, setUploadError] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [customizationName, setCustomizationName] = useState('')
   const [customizationChoice, setCustomizationChoice] = useState('')
   const [customizationPrice, setCustomizationPrice] = useState('0')
@@ -69,6 +73,28 @@ export const MenuItemModal: React.FC<MenuItemModalProps> = ({
       setImageUrl(sampleImages[0])
     }
   }, [item, categories, isOpen])
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (file.size > 5 * 1024 * 1024) {
+      setUploadError('Image exceeds 5MB limit.')
+      return
+    }
+    setIsUploading(true)
+    setUploadError(null)
+    try {
+      const res = await api.uploadImage(file)
+      if (res?.url) {
+        setImageUrl(res.url)
+      }
+    } catch (err: any) {
+      setUploadError(err.message || 'Image upload failed')
+    } finally {
+      setIsUploading(false)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -182,9 +208,41 @@ export const MenuItemModal: React.FC<MenuItemModalProps> = ({
 
         {/* Image upload UI with preview */}
         <div>
-          <label className="block text-xs font-semibold uppercase tracking-wider text-charcoal-soft mb-1.5">
-            Dish Image
-          </label>
+          <div className="flex items-center justify-between mb-1.5">
+            <label className="block text-xs font-semibold uppercase tracking-wider text-charcoal-soft">
+              Dish Image
+            </label>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/gif"
+              className="hidden"
+              onChange={handleFileChange}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={isUploading}
+              onClick={() => fileInputRef.current?.click()}
+              className="h-7 text-[11px] gap-1.5 py-0 px-2.5"
+            >
+              {isUploading ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  Uploading...
+                </>
+              ) : (
+                <>
+                  <Upload className="w-3.5 h-3.5" />
+                  Upload Image
+                </>
+              )}
+            </Button>
+          </div>
+          {uploadError && (
+            <p className="text-[11px] text-red-500 mb-1.5 font-medium">{uploadError}</p>
+          )}
           <div className="flex items-center gap-4">
             <img
               src={imageUrl}

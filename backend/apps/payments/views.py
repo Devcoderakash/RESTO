@@ -8,6 +8,7 @@ from apps.payments.models import Payment
 from apps.orders.models import Order
 from apps.restaurants.services import get_restaurant_by_slug
 from apps.dashboard.permissions import IsStaffOrDashboardAccess
+from apps.realtime.bus import publish_event_on_commit
 
 @api_view(["GET", "POST"])
 @permission_classes([IsStaffOrDashboardAccess])
@@ -54,15 +55,20 @@ def payments_view(request):
             payment_status=data.get("status", "pending"),
             transaction_reference=data.get("transactionReference", ""),
         )
-        return Response({
+        res_payload = {
             "id": payment.id,
             "order_id": payment.order_id,
+            "orderId": payment.order_id,
             "amount": float(payment.amount),
             "payment_method": payment.payment_method,
+            "paymentMethod": payment.payment_method,
             "status": payment.payment_status,
-        }, status=201)
+            "payment_status": payment.payment_status,
+        }
+        publish_event_on_commit(str(restaurant.id), "payment.created", "payment", payment.id, res_payload)
+        return Response(res_payload, status=201)
 
-@api_view(["PATCH"])
+@api_view(["PATCH", "PUT"])
 @permission_classes([IsStaffOrDashboardAccess])
 def payment_status_view(request, pk):
     slug = request.query_params.get("restaurantSlug") or request.data.get("restaurantSlug")
@@ -71,16 +77,22 @@ def payment_status_view(request, pk):
     if not payment:
         raise NotFound({"error": {"code": "NOT_FOUND", "message": "Payment not found"}})
 
-    status = request.data.get("status")
-    if status in ["completed", "refunded", "failed", "pending"]:
-        payment.payment_status = status
+    status = request.data.get("status") or request.data.get("paymentStatus")
+    raw_status = str(status).strip().lower() if status else ""
+    canonical_status = "completed" if raw_status in ["paid", "completed"] else raw_status
+    if canonical_status in ["completed", "refunded", "failed", "pending"]:
+        payment.payment_status = canonical_status
         payment.save(update_fields=["payment_status"])
         if payment.order:
-            payment.order.payment_status = status
+            payment.order.payment_status = canonical_status
             payment.order.save(update_fields=["payment_status"])
 
-    return Response({
+    res_payload = {
         "id": payment.id,
         "status": payment.payment_status,
         "payment_status": payment.payment_status,
-    })
+        "order_id": payment.order_id,
+        "orderId": payment.order_id,
+    }
+    publish_event_on_commit(str(restaurant.id), "payment.updated", "payment", payment.id, res_payload)
+    return Response(res_payload)

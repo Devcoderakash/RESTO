@@ -3,6 +3,7 @@ import { useOrderStore } from '../store/useOrderStore'
 import { useWaiterRequestStore } from '../store/useWaiterRequestStore'
 import { useTableStore } from '../store/useTableStore'
 import { useMenuStore } from '../store/useMenuStore'
+import { usePaymentStore } from '../store/usePaymentStore'
 import { restaurantSlug, apiBaseUrl } from './api'
 import { Order, OrderStatus } from '../types'
 
@@ -188,6 +189,10 @@ class DashboardRealtimeService {
       case 'category.updated':
       case 'category.deleted':
         void useMenuStore.getState().fetchMenu()
+        break
+      case 'payment.created':
+      case 'payment.updated':
+        void usePaymentStore.getState().fetchPayments()
         break
       default:
         break

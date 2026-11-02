@@ -165,6 +165,32 @@ Headers: Authorization: Bearer demo-staff-token-manager
 
 ---
 
+### Suite 9: Live Production Order Acceptance & Full Lifecycle Walkthrough
+Executed live against `https://resto-vc53.onrender.com`:
+1. `POST /api/orders` -> `201 Created` (`ord-1793653202711-f308f5`)
+2. `PATCH /api/orders/ord-.../status` with `confirmed` -> `200 OK` (Order accepted by kitchen)
+3. `PATCH /api/orders/ord-.../status` with `preparing` -> `200 OK`
+4. `PATCH /api/orders/ord-.../status` with `ready` -> `200 OK`
+5. `PATCH /api/orders/ord-.../status` with `served` -> `200 OK`
+6. `PATCH /api/orders/ord-.../status` with `completed` -> `200 OK`
+7. Customer tracking with valid `accessToken` -> `200 OK` (`DF-1007`, status: `received`)
+- **Result**: **PASS (100% Live Verification)**
+
+---
+
+### Suite 10: Image Upload to Supabase Storage
+```bash
+POST /api/upload
+Headers: Authorization: Bearer demo-staff-token-manager
+Payload: Multipart file 'test.png' (67 bytes)
+```
+- **Response Status**: `201 Created`
+- **Response Payload**: `{"url":"https://zmpthsiiouukjjyrbpnz.supabase.co/storage/v1/object/public/resto-media/menu-items/abdf01e3dbe8.png","path":"menu-items/abdf01e3dbe8.png","size":67}`
+- **Verification**: Public image URL accessible and persisted in Supabase Storage bucket `resto-media`.
+- **Result**: **PASS**
+
+---
+
 ## 3. Summary Scorecard
 
 | Area | Tests Executed | Passed | Failed | Status |
@@ -174,6 +200,9 @@ Headers: Authorization: Bearer demo-staff-token-manager
 | 5% GST Compliance | 3 | 3 | 0 | 100% |
 | Staff Dashboard APIs | 12 | 12 | 0 | 100% |
 | Table Creation & CRUD | 15 | 15 | 0 | 100% |
+| Order Acceptance & Lifecycle | 7 | 7 | 0 | 100% |
+| Supabase Image Upload | 2 | 2 | 0 | 100% |
 | Security & Auth Guards | 5 | 5 | 0 | 100% |
-| **Total** | **45** | **45** | **0** | **100% PASS** |
+| **Total** | **54** | **54** | **0** | **100% PASS** |
+
 
