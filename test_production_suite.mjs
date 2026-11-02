@@ -3,7 +3,7 @@
  * Covers Sections 2, 3, 4, 5, 6, 7 & 8
  */
 
-const BACKEND_URL = 'http://localhost:5001'
+const BACKEND_URL = (process.env.BACKEND_URL || 'http://localhost:5001').replace(/\/+$/, '')
 const STAFF_AUTH = {
   Authorization: 'Bearer demo-staff-token-manager',
   'X-Staff-Internal': 'true',
