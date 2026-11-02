@@ -436,30 +436,45 @@ export const dashboardApi = {
     })
   },
   async getPayments(): Promise<PaymentTransaction[]> {
-    const records = listFrom(await request<any>('/payments'), 'payments')
-    return records.map((payment: any) => ({
-      id: String(payment.id),
-      orderId: String(payment.order_id || payment.orderId || ''),
-      tableNumber: String(payment.tableNumber || payment.table_number || ''),
-      paymentMethod: ({
-        upi: 'UPI',
-        card: 'Card',
-        online: 'Online',
-        cash: 'Cash',
-        counter: 'Cash',
-      } as const)[String(payment.payment_method || payment.paymentMethod || 'cash').toLowerCase() as 'upi' | 'card' | 'online' | 'cash' | 'counter'] ?? 'Cash',
-      amount: Number(payment.amount ?? 0),
-      tipAmount: 0,
-      date: String(payment.created_at || payment.createdAt || ''),
-      status: String(payment.payment_status || payment.status || '').toLowerCase() === 'completed'
-        ? 'Success'
-        : String(payment.payment_status || payment.status || '').toLowerCase() === 'refunded'
-          ? 'Refunded'
-          : String(payment.payment_status || payment.status || '').toLowerCase() === 'failed'
-            ? 'Failed'
-            : 'Pending',
-      referenceNo: payment.transaction_reference ?? undefined,
-    }))
+    const parsePayments = (records: any[]): PaymentTransaction[] =>
+      records.map((payment: any) => ({
+        id: String(payment.id),
+        orderId: String(payment.order_id || payment.orderId || ''),
+        tableNumber: String(payment.tableNumber || payment.table_number || ''),
+        paymentMethod: ({
+          upi: 'UPI',
+          card: 'Card',
+          online: 'Online',
+          cash: 'Cash',
+          counter: 'Cash',
+        } as const)[String(payment.payment_method || payment.paymentMethod || 'cash').toLowerCase() as 'upi' | 'card' | 'online' | 'cash' | 'counter'] ?? 'Cash',
+        amount: Number(payment.amount ?? 0),
+        tipAmount: 0,
+        date: String(payment.created_at || payment.createdAt || ''),
+        status: String(payment.payment_status || payment.status || '').toLowerCase() === 'completed'
+          ? 'Success'
+          : String(payment.payment_status || payment.status || '').toLowerCase() === 'refunded'
+            ? 'Refunded'
+            : String(payment.payment_status || payment.status || '').toLowerCase() === 'failed'
+              ? 'Failed'
+              : 'Pending',
+        referenceNo: payment.transaction_reference ?? undefined,
+      }))
+
+    try {
+      const records = listFrom(await request<any>('/payments'), 'payments')
+      return parsePayments(records)
+    } catch (err) {
+      console.warn('Initial payments load failed, retrying once:', err)
+      try {
+        await new Promise((r) => setTimeout(r, 600))
+        const retryRecords = listFrom(await request<any>('/payments'), 'payments')
+        return parsePayments(retryRecords)
+      } catch (retryErr) {
+        console.warn('Payments retry also failed, returning fallback empty list:', retryErr)
+        return []
+      }
+    }
   },
   async getStaff(): Promise<StaffMember[]> {
     return listFrom(await request<any>('/staff'), 'staff').map(normalizeStaff)

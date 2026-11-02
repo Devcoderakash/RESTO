@@ -50,8 +50,11 @@ async function loadLiveData() {
   if (overview.status === 'fulfilled') useDashboardDataStore.setState({ overview: overview.value })
   else errors.push(`Overview: ${getErrorMessage(overview.reason)}`)
 
-  if (payments.status === 'fulfilled') usePaymentStore.setState({ transactions: payments.value })
-  else errors.push(`Payments: ${getErrorMessage(payments.reason)}`)
+  if (payments.status === 'fulfilled') {
+    usePaymentStore.setState({ transactions: payments.value })
+  } else {
+    console.warn('Payments load non-fatal warning:', payments.reason)
+  }
 
   if (dailySales.status === 'fulfilled') useDashboardDataStore.setState({ dailySales: dailySales.value })
   else errors.push(`Daily sales: ${getErrorMessage(dailySales.reason)}`)

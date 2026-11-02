@@ -57,6 +57,7 @@ urlpatterns = [
 
     # Payments
     path("api/payments", payment_views.payments_view, name="payments"),
+    path("api/payments/", payment_views.payments_view),
     path("api/payments/<str:pk>/status", payment_views.payment_status_view, name="payment-status"),
 
     # Real-Time SSE Stream & State Sync
@@ -100,5 +101,6 @@ urlpatterns = [
     path("service-requests", service_views.service_requests_view),
     path("service-requests/<str:pk>", service_views.service_request_detail_view),
     path("payments", payment_views.payments_view),
+    path("payments/", payment_views.payments_view),
     path("payments/<str:pk>/status", payment_views.payment_status_view),
 ]

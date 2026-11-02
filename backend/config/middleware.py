@@ -17,11 +17,12 @@ class SecurityHeadersMiddleware:
         # 2. Prevent clickjacking / frame embedding
         response["X-Frame-Options"] = "DENY"
 
-        # 3. Referrer Policy
+        # 3. Referrer Policy & Cross-Origin Resource Policy
         response["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response["Cross-Origin-Resource-Policy"] = "cross-origin"
 
         # 4. Restrict dangerous browser capabilities
-        response["Permissions-Policy"] = "camera=(), microphone=(), geolocation=(), payment=()"
+        response["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
 
         # 5. Content Security Policy (Allows necessary assets while preventing XSS/injection)
         response["Content-Security-Policy"] = (
@@ -43,3 +44,4 @@ class SecurityHeadersMiddleware:
             del response["Server"]
 
         return response
+

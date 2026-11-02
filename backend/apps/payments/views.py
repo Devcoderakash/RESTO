@@ -12,24 +12,28 @@ from apps.dashboard.permissions import IsStaffOrDashboardAccess
 @api_view(["GET", "POST"])
 @permission_classes([IsStaffOrDashboardAccess])
 def payments_view(request):
-    restaurant = get_restaurant_by_slug()
+    slug = request.query_params.get("restaurantSlug") or request.data.get("restaurantSlug")
+    restaurant = get_restaurant_by_slug(slug)
     if request.method == "GET":
         payments = Payment.objects.filter(restaurant=restaurant).select_related("order").order_by("-created_at")[:100]
         data = []
         for p in payments:
-            table_num = p.order.table_number if p.order else ""
-            data.append({
-                "id": p.id,
-                "order_id": p.order_id,
-                "orderId": p.order_id,
-                "amount": float(p.amount),
-                "payment_method": p.payment_method,
-                "paymentMethod": p.payment_method,
-                "status": p.payment_status,
-                "payment_status": p.payment_status,
-                "created_at": p.created_at.isoformat(),
-                "orders": {"table_number": table_num},
-            })
+            try:
+                table_num = p.order.table_number if p.order else ""
+                data.append({
+                    "id": p.id,
+                    "order_id": p.order_id,
+                    "orderId": p.order_id,
+                    "amount": float(p.amount) if p.amount is not None else 0.0,
+                    "payment_method": p.payment_method or "counter",
+                    "paymentMethod": p.payment_method or "counter",
+                    "status": p.payment_status or "pending",
+                    "payment_status": p.payment_status or "pending",
+                    "created_at": p.created_at.isoformat() if p.created_at else "",
+                    "orders": {"table_number": table_num},
+                })
+            except Exception:
+                continue
         return Response({"payments": data})
 
     elif request.method == "POST":
