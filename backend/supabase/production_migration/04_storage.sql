@@ -47,3 +47,4 @@ CREATE POLICY "Staff can update images in resto-media" ON storage.objects
     FOR UPDATE TO authenticated
     USING (bucket_id = 'resto-media')
     WITH CHECK (bucket_id = 'resto-media');
+

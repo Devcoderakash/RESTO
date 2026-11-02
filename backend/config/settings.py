@@ -65,7 +65,7 @@ TEMPLATES = [
 WSGI_APPLICATION = "config.wsgi.application"
 ASGI_APPLICATION = "config.asgi.application"
 
-# Database Configuration (Supabase PostgreSQL with SQLite fallback)
+# Database Configuration (Supabase PostgreSQL as Single Source of Truth)
 DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
 IS_REAL_POSTGRES = (
     DATABASE_URL.startswith("postgres://") or DATABASE_URL.startswith("postgresql://")
@@ -80,6 +80,13 @@ if IS_REAL_POSTGRES:
         )
     }
 else:
+    if not DEBUG:
+        from django.core.exceptions import ImproperlyConfigured
+        raise ImproperlyConfigured(
+            "CRITICAL: DATABASE_URL pointing to Supabase PostgreSQL is required in production. "
+            "SQLite fallback is strictly prohibited for production deployments."
+        )
+    # Development fallback only when DATABASE_URL is pending
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.sqlite3",

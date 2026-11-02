@@ -17,6 +17,12 @@ services:
         generateValue: true
       - key: TRACKING_TOKEN_SECRET
         generateValue: true
+      - key: DATABASE_URL
+        sync: false
+      - key: SUPABASE_URL
+        value: "https://zmpthsiiouukjjyrbpnz.supabase.co"
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
 
   # 2. Customer Frontend (Static Site)
   - type: web

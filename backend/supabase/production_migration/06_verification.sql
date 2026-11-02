@@ -121,3 +121,4 @@ UNION ALL
 SELECT 'staff', COUNT(*) FROM public.staff
 UNION ALL
 SELECT 'realtime_events', COUNT(*) FROM public.realtime_events;
+

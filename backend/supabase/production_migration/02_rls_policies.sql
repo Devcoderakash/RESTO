@@ -118,3 +118,4 @@ DROP POLICY IF EXISTS staff_read_staff ON public.staff;
 CREATE POLICY staff_read_staff ON public.staff
     FOR SELECT TO authenticated
     USING (is_active = true);
+

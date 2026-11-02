@@ -24,3 +24,4 @@
    - Paste the contents of `04_storage.sql` -> Click **Run**.
    - Paste the contents of `05_realtime.sql` -> Click **Run**.
 4. Run `06_verification.sql` to confirm that all 10 tables, foreign keys, RLS policies, indexes, and publications are active.
+

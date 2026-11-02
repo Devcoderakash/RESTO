@@ -199,3 +199,4 @@ CREATE TABLE IF NOT EXISTS public.realtime_events (
     payload JSONB NOT NULL DEFAULT '{}'::jsonb,
     created_at TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp()
 );
+

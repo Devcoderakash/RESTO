@@ -75,3 +75,4 @@ CREATE INDEX IF NOT EXISTS idx_realtime_events_restaurant_id
 
 CREATE INDEX IF NOT EXISTS idx_realtime_events_entity 
     ON public.realtime_events (restaurant_id, entity_type, entity_id);
+
