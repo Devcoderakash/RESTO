@@ -17,12 +17,33 @@ from config.supabase import check_supabase_health
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def health_check(request):
+    import re
     from django.db import connection
     sb_health = check_supabase_health()
+
+    db_ok = False
+    db_records = 0
+    db_error = None
+
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT COUNT(*) FROM restaurants;")
+            row = cursor.fetchone()
+            db_records = row[0] if row else 0
+            db_ok = True
+    except Exception as e:
+        raw_err = str(e).split("\n")[0]
+        # Mask out any password pattern in error string
+        clean_err = re.sub(r"password=[^\s]+", "password=[REDACTED]", raw_err)
+        db_error = f"{type(e).__name__}: {clean_err}"
+
     return Response({
-        "status": "ok",
+        "status": "ok" if db_ok else "degraded",
         "database_vendor": connection.vendor,
         "database_configured": bool(connection.vendor == "postgresql"),
+        "database_connected": db_ok,
+        "database_records": db_records,
+        "database_error": db_error,
         "supabase": sb_health.get("status", "unknown"),
         "storage": sb_health.get("storage", "unknown"),
     })
