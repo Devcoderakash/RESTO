@@ -60,3 +60,4 @@ def check_supabase_health() -> dict:
         return {"status": "degraded", "error": f"HTTP {r.status_code}"}
     except Exception as ex:
         return {"status": "error", "error": str(ex)}
+
