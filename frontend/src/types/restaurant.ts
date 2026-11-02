@@ -37,8 +37,9 @@ export interface TableContext {
 }
 
 export interface DiningTable {
+  id?: string
   number: string
   capacity: number
-  zone: 'Main Dining' | 'Garden Alfresco' | 'Terrace Lounge'
+  zone: string
   isOccupied: boolean
 }

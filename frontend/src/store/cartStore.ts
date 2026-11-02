@@ -29,11 +29,30 @@ interface CartState {
   getBreakdown: () => BillBreakdown
 }
 
+function getStoredCartState() {
+  try {
+    const raw = localStorage.getItem('dineflow_cart_store')
+    if (raw) {
+      const parsed = JSON.parse(raw)
+      const st = parsed?.state
+      if (st && Array.isArray(st.items)) {
+        return {
+          items: st.items,
+          tableNumber: st.tableNumber || '',
+        }
+      }
+    }
+  } catch {}
+  return { items: [], tableNumber: '' }
+}
+
+const initialCart = getStoredCartState()
+
 export const useCartStore = create<CartState>()(
   persist(
     (set, get) => ({
-      items: [],
-      tableNumber: '07',
+      items: initialCart.items,
+      tableNumber: initialCart.tableNumber,
       isDrawerOpen: false,
 
       openDrawer: () => set({ isDrawerOpen: true }),

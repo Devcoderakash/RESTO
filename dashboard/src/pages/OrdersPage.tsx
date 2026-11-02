@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   Search,
   Filter,
@@ -39,10 +39,15 @@ export const OrdersPage: React.FC = () => {
     setSearchQuery,
     setStatusFilter,
     setTableFilter,
+    fetchOrders,
     updateOrderStatus,
     updatePaymentStatus,
     cancelOrder,
   } = useOrderStore()
+
+  useEffect(() => {
+    void fetchOrders()
+  }, [fetchOrders])
 
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)

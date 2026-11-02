@@ -52,7 +52,7 @@ def public_menu(request):
 
     categories = list(Category.objects.filter(restaurant=restaurant, is_visible=True).order_by("sort_order"))
     category_map = {c.id: c.name for c in categories}
-    items = list(MenuItem.objects.filter(restaurant=restaurant).order_by("sort_order", "name"))
+    items = list(MenuItem.objects.filter(restaurant=restaurant).select_related("category").order_by("sort_order", "name"))
 
     return Response({
         "items": [format_menu_item(item, category_map) for item in items],
@@ -80,7 +80,7 @@ def staff_menu(request):
     if request.method == "GET":
         categories = list(Category.objects.filter(restaurant=restaurant).order_by("sort_order"))
         category_map = {c.id: c.name for c in categories}
-        items = MenuItem.objects.filter(restaurant=restaurant).order_by("sort_order", "name")
+        items = MenuItem.objects.filter(restaurant=restaurant).select_related("category").order_by("sort_order", "name")
         return Response({
             "items": [format_menu_item(item, category_map) for item in items],
             "categories": [{"id": c.id, "name": c.name, "description": c.description} for c in categories],

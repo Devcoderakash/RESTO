@@ -75,17 +75,17 @@ def check_realtime_auth(request, restaurant, target_order_id):
     """
     Strict authorization verification for Real-Time SSE streams and sync endpoints.
     - If target_order_id: Customer must provide valid accessToken, or caller must be staff.
-    - If no target_order_id: Caller must be authenticated staff.
+    - If no target_order_id: Caller must be authenticated staff via headers.
     """
+    # Security: Staff tokens MUST come from secure headers, never query strings
     staff_token = (
-        request.GET.get("staffToken")
-        or request.GET.get("token")
-        or request.headers.get("X-Staff-Token")
+        request.headers.get("X-Staff-Token")
         or request.headers.get("X-Dashboard-Token")
     )
     auth_header = request.headers.get("Authorization", "")
     if auth_header.startswith("Bearer "):
-        staff_token = staff_token or auth_header[7:].strip()
+        bearer_token = auth_header[7:].strip()
+        staff_token = staff_token or bearer_token
 
     is_staff = is_valid_staff_token(staff_token)
     if not is_staff and request.headers.get("X-Staff-Internal") == "true":
@@ -99,7 +99,13 @@ def check_realtime_auth(request, restaurant, target_order_id):
         if is_staff:
             return True, 200, "OK"
 
-        access_token = request.GET.get("accessToken") or request.GET.get("token", "").strip()
+        access_token = (
+            request.GET.get("accessToken")
+            or request.GET.get("token", "").strip()
+        )
+        if not access_token and auth_header.startswith("Bearer "):
+            access_token = auth_header[7:].strip()
+
         if order.tracking_token_hash:
             if not access_token or not verify_tracking_token(access_token, order.tracking_token_hash):
                 return False, 401, "Valid order tracking accessToken required"

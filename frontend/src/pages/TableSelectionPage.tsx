@@ -31,21 +31,25 @@ export const TableSelectionPage: React.FC = () => {
     let active = true
     getAvailableTables()
       .then((response) => {
-        const apiTables = Array.isArray(response) ? response : response.tables
-        const available = apiTables.map((table: ApiTable) => ({
-          number: table.number.padStart(2, '0'),
-          capacity: table.capacity,
-          zone: (table.zone || 'Main Dining') as DiningTable['zone'],
-          isOccupied: table.status.toLowerCase() !== 'available',
+        const rawTables = Array.isArray(response) ? response : (response?.tables || [])
+        const available = rawTables.map((table: ApiTable) => ({
+          id: table.id,
+          number: String(table.number || table.table_number || '').padStart(2, '0'),
+          capacity: table.capacity || 4,
+          zone: table.zone || 'Main Dining',
+          isOccupied: String(table.status || '').toLowerCase() !== 'available',
         }))
         if (active) {
           setTables(available)
           // Default selection to current table or first available
-          setSelectedTableNumber(
-            available.find((table) => table.number === currentTable && !table.isOccupied)?.number ||
+          setSelectedTableNumber((prev) => {
+            if (prev && available.some((t) => t.number === prev && !t.isOccupied)) return prev
+            return (
+              available.find((table) => table.number === currentTable && !table.isOccupied)?.number ||
               available.find((table) => !table.isOccupied)?.number ||
               ''
-          )
+            )
+          })
           setLoadError(null)
         }
       })
@@ -61,7 +65,7 @@ export const TableSelectionPage: React.FC = () => {
     return () => {
       active = false
     }
-  }, [currentTable])
+  }, [])
 
   const zones = ['ALL', ...new Set(tables.map((table) => table.zone))]
 
@@ -84,7 +88,7 @@ export const TableSelectionPage: React.FC = () => {
       toast.error('Please select an available table.')
       return
     }
-    setTable(selectedTableNumber)
+    setTable(selectedTableNumber, false, table.id)
     toast.success(`Seated at Table ${selectedTableNumber}`)
     navigate('/menu')
   }

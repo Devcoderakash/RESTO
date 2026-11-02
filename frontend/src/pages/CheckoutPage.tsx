@@ -95,6 +95,7 @@ export const CheckoutPage: React.FC = () => {
       const trackingToken = order.trackingToken ?? order.accessToken
       if (trackingToken) {
         sessionStorage.setItem(`order-tracking:${order.id}`, trackingToken)
+        localStorage.setItem(`order-tracking:${order.id}`, trackingToken)
       }
       sessionStorage.removeItem('checkout-idempotency-key')
       if (name.trim()) setGuestDetails(name.trim(), 2)

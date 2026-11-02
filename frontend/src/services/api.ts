@@ -60,7 +60,9 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export interface ApiTable {
+  id?: string
   number: string
+  table_number?: string
   capacity: number
   zone?: string
   status: string
@@ -152,7 +154,16 @@ export function createCustomerOrder(input: CreateOrderInput): Promise<CreateOrde
 }
 
 export function getTrackedOrder(orderId: string): Promise<Order> {
-  const token = sessionStorage.getItem(`order-tracking:${orderId}`)
+  const urlToken = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('accessToken') : null
+  const token =
+    urlToken ||
+    sessionStorage.getItem(`order-tracking:${orderId}`) ||
+    localStorage.getItem(`order-tracking:${orderId}`) ||
+    ''
+  if (token && typeof sessionStorage !== 'undefined') {
+    sessionStorage.setItem(`order-tracking:${orderId}`, token)
+    localStorage.setItem(`order-tracking:${orderId}`, token)
+  }
   const suffix = token ? `?accessToken=${encodeURIComponent(token)}` : ''
   return request(`/orders/${encodeURIComponent(orderId)}/tracking${suffix}`)
 }

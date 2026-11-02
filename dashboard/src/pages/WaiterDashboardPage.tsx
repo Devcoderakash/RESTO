@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import {
   UtensilsCrossed,
@@ -15,13 +15,19 @@ import { useWaiterRequestStore } from '../store/useWaiterRequestStore'
 import { toast } from 'sonner'
 
 export const WaiterDashboardPage: React.FC = () => {
-  const { orders, updateOrderStatus } = useOrderStore()
+  const { orders, updateOrderStatus, fetchOrders } = useOrderStore()
   const {
     tableRequests,
     billRequests,
     completeTableRequest,
     completeBillRequest,
+    fetchRequests,
   } = useWaiterRequestStore()
+
+  useEffect(() => {
+    void fetchOrders()
+    void fetchRequests()
+  }, [fetchOrders, fetchRequests])
 
   const [activeTab, setActiveTab] = useState<'ready' | 'calls' | 'bills'>('ready')
 

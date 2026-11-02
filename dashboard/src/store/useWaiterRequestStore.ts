@@ -26,6 +26,7 @@ interface WaiterRequestState {
   billRequests: BillRequest[]
   completeTableRequest: (id: string) => Promise<boolean>
   completeBillRequest: (id: string) => Promise<boolean>
+  fetchRequests: () => Promise<void>
   setRequests: (requests: { tableRequests: TableRequest[]; billRequests: BillRequest[] }) => void
   resetRequests: () => void
 }
@@ -59,6 +60,14 @@ export const useWaiterRequestStore = create<WaiterRequestState>((set) => ({
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Bill request could not be completed.')
       return false
+    }
+  },
+  fetchRequests: async () => {
+    try {
+      const res = await dashboardApi.getServiceRequests()
+      set({ tableRequests: res.tableRequests, billRequests: res.billRequests })
+    } catch (error) {
+      console.warn('Failed to fetch service requests:', error)
     }
   },
   setRequests: (requests) => set(requests),

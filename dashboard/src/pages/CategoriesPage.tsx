@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Layers, Plus, ArrowUpDown, CheckCircle } from 'lucide-react'
 import { Button } from '../components/ui/Button'
 import { CategoryCard } from '../components/categories/CategoryCard'
@@ -14,12 +14,17 @@ export const CategoriesPage: React.FC = () => {
   const {
     categories,
     items,
+    fetchMenu,
     addCategory,
     updateCategory,
     deleteCategory,
     toggleCategoryActive,
     reorderCategories,
   } = useMenuStore()
+
+  useEffect(() => {
+    void fetchMenu()
+  }, [fetchMenu])
 
   const [activeCatModal, setActiveCatModal] = useState<Category | null | 'NEW'>(null)
   const [deleteModalCat, setDeleteModalCat] = useState<Category | null>(null)

@@ -14,6 +14,7 @@ interface MenuState {
   availabilityFilter: 'ALL' | 'AVAILABLE' | 'UNAVAILABLE'
   viewMode: 'grid' | 'table'
   setMenu: (items: MenuItem[], categories: Category[]) => void
+  fetchMenu: () => Promise<void>
   setSelectedItem: (item: MenuItem | null) => void
   setSelectedCategory: (cat: Category | null) => void
   setSearchQuery: (query: string) => void
@@ -45,6 +46,14 @@ export const useMenuStore = create<MenuState>((set, get) => ({
   availabilityFilter: 'ALL',
   viewMode: 'grid',
   setMenu: (items, categories) => set({ items, categories }),
+  fetchMenu: async () => {
+    try {
+      const menu = await dashboardApi.getMenu()
+      set({ items: menu.items, categories: menu.categories })
+    } catch (error) {
+      console.warn('Failed to fetch menu:', error)
+    }
+  },
   setSelectedItem: (item) => set({ selectedItem: item }),
   setSelectedCategory: (cat) => set({ selectedCategory: cat }),
   setSearchQuery: (query) => set({ searchQuery: query }),

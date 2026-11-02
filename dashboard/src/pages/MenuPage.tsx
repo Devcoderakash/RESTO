@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   UtensilsCrossed,
   Plus,
@@ -33,6 +33,7 @@ export const MenuPage: React.FC = () => {
     dietFilter,
     availabilityFilter,
     viewMode,
+    fetchMenu,
     setSearchQuery,
     setCategoryFilter,
     setDietFilter,
@@ -44,6 +45,10 @@ export const MenuPage: React.FC = () => {
     toggleItemAvailability,
     toggleItemPopular,
   } = useMenuStore()
+
+  useEffect(() => {
+    void fetchMenu()
+  }, [fetchMenu])
 
   const [activeItemModal, setActiveItemModal] = useState<MenuItem | null | 'NEW'>(null)
   const [deleteModalItem, setDeleteModalItem] = useState<MenuItem | null>(null)

@@ -211,7 +211,7 @@ class DashboardRealtimeService {
         if (o.id !== payload.id) return o
         return {
           ...o,
-          status: mappedStatus,
+          orderStatus: mappedStatus,
           paymentStatus: payload.paymentStatus || payload.payment_status || o.paymentStatus,
           updatedAt: payload.updatedAt || payload.updated_at || new Date().toISOString(),
         }

@@ -12,6 +12,7 @@ interface OrderState {
   tableFilter: string
   dateFilter: string
   setOrders: (orders: Order[]) => void
+  fetchOrders: () => Promise<Order[]>
   setSelectedOrder: (order: Order | null) => void
   setSearchQuery: (query: string) => void
   setStatusFilter: (status: string) => void
@@ -31,6 +32,16 @@ export const useOrderStore = create<OrderState>((set) => ({
   tableFilter: 'ALL',
   dateFilter: 'ALL',
   setOrders: (orders) => set({ orders }),
+  fetchOrders: async () => {
+    try {
+      const orders = await dashboardApi.getOrders()
+      set({ orders })
+      return orders
+    } catch (error) {
+      console.warn('Failed to fetch orders:', error)
+      return []
+    }
+  },
   setSelectedOrder: (order) => set({ selectedOrder: order }),
   setSearchQuery: (query) => set({ searchQuery: query }),
   setStatusFilter: (status) => set({ statusFilter: status }),

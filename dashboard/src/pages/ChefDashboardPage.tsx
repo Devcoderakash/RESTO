@@ -17,7 +17,11 @@ import { Order } from '../types'
 import { toast } from 'sonner'
 
 export const ChefDashboardPage: React.FC = () => {
-  const { orders, updateOrderStatus } = useOrderStore()
+  const { orders, updateOrderStatus, fetchOrders } = useOrderStore()
+
+  useEffect(() => {
+    void fetchOrders()
+  }, [fetchOrders])
   const [activeTab, setActiveTab] = useState<'all' | 'Accepted' | 'Preparing' | 'Ready'>('all')
   const [soundEnabled, setSoundEnabled] = useState(true)
   const [currentTime, setCurrentTime] = useState(new Date().toLocaleTimeString())
