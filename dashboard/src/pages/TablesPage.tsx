@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   Grid3X3,
   Plus,
@@ -30,12 +30,17 @@ export const TablesPage: React.FC = () => {
     statusFilter,
     setZoneFilter,
     setStatusFilter,
+    fetchTables,
     addTable,
     updateTable,
     deleteTable,
     setTableStatus,
     clearTableSession,
   } = useTableStore()
+
+  useEffect(() => {
+    void fetchTables()
+  }, [fetchTables])
 
   const [activeTableModal, setActiveTableModal] = useState<Table | null | 'NEW'>(null)
   const [qrModalTable, setQrModalTable] = useState<Table | null>(null)
@@ -70,12 +75,13 @@ export const TablesPage: React.FC = () => {
     status: TableStatus
   }): Promise<boolean> => {
     if (activeTableModal === 'NEW') {
-      if (!await addTable(data)) return false
+      await addTable(data)
       toast.success(`Table ${data.tableNumber} added successfully`)
     } else if (activeTableModal) {
-      if (!await updateTable(activeTableModal.id, data)) return false
+      await updateTable(activeTableModal.id, data)
       toast.success(`Table ${data.tableNumber} updated`)
     }
+    void fetchTables()
     setActiveTableModal(null)
     return true
   }

@@ -179,3 +179,8 @@ SUPABASE_URL = os.getenv("SUPABASE_URL", "")
 SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY", "")
 SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
 
+# Configured Staff API Tokens (comma-separated list for easy production credential rotation)
+_raw_staff_tokens = os.getenv("STAFF_API_TOKENS", "")
+STAFF_API_TOKENS = {t.strip() for t in _raw_staff_tokens.split(",") if t.strip()}
+
+

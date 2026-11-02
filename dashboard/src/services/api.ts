@@ -316,11 +316,13 @@ export const dashboardApi = {
     })
   },
   async createTable(input: Omit<Table, 'id' | 'qrUrl'>): Promise<Table> {
-    const result = await request<any>('/tables', {
+    const rawNumber = String(input.tableNumber).trim()
+    const result = await request<any>(`/tables?restaurantSlug=${encodeURIComponent(restaurantSlug)}`, {
       method: 'POST',
       body: JSON.stringify({
-        tableNumber: Number(input.tableNumber),
-        capacity: input.capacity,
+        tableNumber: rawNumber,
+        table_number: rawNumber,
+        capacity: Number(input.capacity) || 4,
         zone: input.zone,
         status: input.status === 'Available' ? 'available' : input.status === 'Occupied' ? 'occupied' : 'inactive',
       }),
@@ -333,11 +335,13 @@ export const dashboardApi = {
       const table = listFrom(current, 'tables').find((candidate) => String(candidate.id) === tableId)
       if (!table) throw new Error('Table not found.')
       const status = input.status ?? normalizeTable(table).status
-      await request(`/tables/${encodeURIComponent(tableId)}`, {
+      const rawNumber = String(input.tableNumber ?? table.tableNumber ?? table.table_number).trim()
+      await request(`/tables/${encodeURIComponent(tableId)}?restaurantSlug=${encodeURIComponent(restaurantSlug)}`, {
         method: 'PUT',
         body: JSON.stringify({
-          tableNumber: Number(input.tableNumber ?? table.table_number),
-          capacity: input.capacity ?? table.capacity,
+          tableNumber: rawNumber,
+          table_number: rawNumber,
+          capacity: Number(input.capacity ?? table.capacity) || 4,
           zone: input.zone ?? table.zone,
           status: status === 'Available' ? 'available' : status === 'Occupied' ? 'occupied' : 'inactive',
         }),

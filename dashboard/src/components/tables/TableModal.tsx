@@ -4,6 +4,7 @@ import { Button } from '../ui/Button'
 import { Input } from '../ui/Input'
 import { Select } from '../ui/Select'
 import { Table, TableStatus } from '../../types'
+import { AlertCircle } from 'lucide-react'
 
 export interface TableModalProps {
   table: Table | null
@@ -22,12 +23,16 @@ export const TableModal: React.FC<TableModalProps> = ({ table, isOpen, onClose, 
   const [capacity, setCapacity] = useState('4')
   const [zone, setZone] = useState<'Main Dining' | 'Patio & Outdoor' | 'VIP Lounge' | 'Rooftop Terrace'>('Main Dining')
   const [status, setStatus] = useState<TableStatus>('Available')
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
   useEffect(() => {
+    setErrorMessage(null)
+    setIsSubmitting(false)
     if (table) {
       setTableNumber(table.tableNumber)
       setCapacity(String(table.capacity))
-      setZone(table.zone)
+      setZone(table.zone as any)
       setStatus(table.status)
     } else {
       setTableNumber('')
@@ -39,15 +44,30 @@ export const TableModal: React.FC<TableModalProps> = ({ table, isOpen, onClose, 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!tableNumber.trim()) return
+    const cleanNumber = tableNumber.trim()
+    if (!cleanNumber) {
+      setErrorMessage('Table number is required.')
+      return
+    }
 
-    const saved = await onSave({
-      tableNumber: tableNumber.trim(),
-      capacity: parseInt(capacity) || 4,
-      zone,
-      status,
-    })
-    if (saved !== false) onClose()
+    setErrorMessage(null)
+    setIsSubmitting(true)
+
+    try {
+      const saved = await onSave({
+        tableNumber: cleanNumber,
+        capacity: parseInt(capacity) || 4,
+        zone,
+        status,
+      })
+      if (saved !== false) {
+        onClose()
+      }
+    } catch (err: any) {
+      setErrorMessage(err?.message || 'Failed to save table. Please try again.')
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -59,11 +79,22 @@ export const TableModal: React.FC<TableModalProps> = ({ table, isOpen, onClose, 
       description="Configure table identity, seating capacity, and floor dining zone."
     >
       <form onSubmit={handleSubmit} className="space-y-4">
+        {errorMessage && (
+          <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl flex items-start gap-2 animate-in fade-in">
+            <AlertCircle className="w-4 h-4 flex-shrink-0 text-red-600 mt-0.5" />
+            <span>{errorMessage}</span>
+          </div>
+        )}
+
         <Input
           label="Table Number"
           placeholder="e.g. 14, 15, 16"
           value={tableNumber}
-          onChange={(e) => setTableNumber(e.target.value)}
+          onChange={(e) => {
+            setTableNumber(e.target.value)
+            if (errorMessage) setErrorMessage(null)
+          }}
+          disabled={isSubmitting}
           required
         />
 
@@ -71,6 +102,7 @@ export const TableModal: React.FC<TableModalProps> = ({ table, isOpen, onClose, 
           label="Seating Capacity (Guests)"
           value={capacity}
           onChange={(e) => setCapacity(e.target.value)}
+          disabled={isSubmitting}
         >
           <option value="2">2 Guests (Intimate / Bistro)</option>
           <option value="4">4 Guests (Standard Dining)</option>
@@ -83,6 +115,7 @@ export const TableModal: React.FC<TableModalProps> = ({ table, isOpen, onClose, 
           label="Dining Floor Zone"
           value={zone}
           onChange={(e) => setZone(e.target.value as any)}
+          disabled={isSubmitting}
         >
           <option value="Main Dining">Main Dining Hall</option>
           <option value="Patio & Outdoor">Patio & Outdoor Garden</option>
@@ -94,6 +127,7 @@ export const TableModal: React.FC<TableModalProps> = ({ table, isOpen, onClose, 
           label="Initial Status"
           value={status}
           onChange={(e) => setStatus(e.target.value as any)}
+          disabled={isSubmitting}
         >
           <option value="Available">Available</option>
           <option value="Occupied">Occupied</option>
@@ -105,10 +139,10 @@ export const TableModal: React.FC<TableModalProps> = ({ table, isOpen, onClose, 
         </Select>
 
         <div className="flex items-center justify-end gap-3 pt-4 border-t border-beige">
-          <Button variant="outline" size="sm" type="button" onClick={onClose}>
+          <Button variant="outline" size="sm" type="button" onClick={onClose} disabled={isSubmitting}>
             Cancel
           </Button>
-          <Button variant="primary" size="sm" type="submit">
+          <Button variant="primary" size="sm" type="submit" disabled={isSubmitting} isLoading={isSubmitting}>
             {table ? 'Update Table' : 'Create Table'}
           </Button>
         </div>
