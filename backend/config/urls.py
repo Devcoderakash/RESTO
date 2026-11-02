@@ -17,10 +17,12 @@ from config.supabase import check_supabase_health
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def health_check(request):
+    from django.db import connection
     sb_health = check_supabase_health()
     return Response({
         "status": "ok",
-        "database": "supabase-postgresql",
+        "database_vendor": connection.vendor,
+        "database_configured": bool(connection.vendor == "postgresql"),
         "supabase": sb_health.get("status", "unknown"),
         "storage": sb_health.get("storage", "unknown"),
     })
