@@ -16,19 +16,41 @@ import { DiningTable } from '../types/restaurant'
 import { toast } from 'sonner'
 import { ApiTable, getAvailableTables } from '../services/api'
 
+function getCachedCustomerTables(): DiningTable[] {
+  try {
+    const raw = localStorage.getItem('resto_cache_customer_tables')
+    if (raw) {
+      const parsed = JSON.parse(raw)
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed
+    }
+  } catch {}
+  return []
+}
+
 export const TableSelectionPage: React.FC = () => {
   const navigate = useNavigate()
   const { currentTable, setTable } = useTableStore()
   const restaurantInfo = useRestaurantStore((s) => s.info)
 
-  const [selectedTableNumber, setSelectedTableNumber] = useState<string>('')
+  const initialCached = getCachedCustomerTables()
+  const [tables, setTables] = useState<DiningTable[]>(initialCached)
+  const [selectedTableNumber, setSelectedTableNumber] = useState<string>(() => {
+    return (
+      initialCached.find((table) => table.number === currentTable && !table.isOccupied)?.number ||
+      initialCached.find((table) => !table.isOccupied)?.number ||
+      ''
+    )
+  })
   const [selectedZone, setSelectedZone] = useState<string>('ALL')
-  const [tables, setTables] = useState<DiningTable[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(() => initialCached.length === 0)
+  const [isRefreshing, setIsRefreshing] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
 
   useEffect(() => {
     let active = true
+    if (tables.length > 0) setIsRefreshing(true)
+    else setIsLoading(true)
+
     getAvailableTables()
       .then((response) => {
         const rawTables = Array.isArray(response) ? response : (response?.tables || [])
@@ -40,6 +62,9 @@ export const TableSelectionPage: React.FC = () => {
           isOccupied: String(table.status || '').toLowerCase() !== 'available',
         }))
         if (active) {
+          try {
+            localStorage.setItem('resto_cache_customer_tables', JSON.stringify(available))
+          } catch {}
           setTables(available)
           // Default selection to current table or first available
           setSelectedTableNumber((prev) => {
@@ -56,11 +81,19 @@ export const TableSelectionPage: React.FC = () => {
       .catch((error: unknown) => {
         if (active) {
           const msg = error instanceof Error ? error.message : 'Unable to connect to the table availability service.'
-          setLoadError(msg)
+          // Only show full error if we have ZERO tables to display!
+          if (tables.length === 0) {
+            setLoadError(msg)
+          } else {
+            console.warn('Background table sync failed:', msg)
+          }
         }
       })
       .finally(() => {
-        if (active) setIsLoading(false)
+        if (active) {
+          setIsLoading(false)
+          setIsRefreshing(false)
+        }
       })
     return () => {
       active = false

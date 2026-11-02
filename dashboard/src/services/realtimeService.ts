@@ -2,6 +2,7 @@ import { toast } from 'sonner'
 import { useOrderStore } from '../store/useOrderStore'
 import { useWaiterRequestStore } from '../store/useWaiterRequestStore'
 import { useTableStore } from '../store/useTableStore'
+import { useMenuStore } from '../store/useMenuStore'
 import { restaurantSlug, apiBaseUrl } from './api'
 import { Order, OrderStatus } from '../types'
 
@@ -18,7 +19,15 @@ class DashboardRealtimeService {
   private abortController: AbortController | null = null
   private lastEventId: number = 0
   private reconnectTimer: number | null = null
+  private pollingTimer: number | null = null
   private isConnecting: boolean = false
+  private isConnected: boolean = false
+  private processedEventIds = new Set<number>()
+
+  // Backoff strategy (2s base, 1.5x factor, 30s ceiling, 0-500ms jitter)
+  private currentBackoffMs: number = 2000
+  private readonly minBackoffMs: number = 2000
+  private readonly maxBackoffMs: number = 30000
 
   public connect(): () => void {
     if (this.abortController || this.isConnecting) {
@@ -27,6 +36,22 @@ class DashboardRealtimeService {
 
     this.initStream()
     return () => this.disconnect()
+  }
+
+  private startFallbackPolling() {
+    if (this.pollingTimer) return
+    this.pollingTimer = window.setInterval(() => {
+      if (!this.isConnected) {
+        void this.syncMissedEvents()
+      }
+    }, 15000)
+  }
+
+  private stopFallbackPolling() {
+    if (this.pollingTimer) {
+      window.clearInterval(this.pollingTimer)
+      this.pollingTimer = null
+    }
   }
 
   private async initStream() {
@@ -56,6 +81,10 @@ class DashboardRealtimeService {
       }
 
       this.isConnecting = false
+      this.isConnected = true
+      this.currentBackoffMs = this.minBackoffMs
+      this.stopFallbackPolling()
+
       if (this.reconnectTimer) {
         window.clearTimeout(this.reconnectTimer)
         this.reconnectTimer = null
@@ -97,22 +126,40 @@ class DashboardRealtimeService {
     } catch (err: any) {
       if (err?.name === 'AbortError') return
       this.isConnecting = false
+      this.isConnected = false
+      this.startFallbackPolling()
+
       if (this.abortController) {
         this.abortController = null
       }
       if (!this.reconnectTimer) {
+        const jitter = Math.floor(Math.random() * 500)
+        const delay = this.currentBackoffMs + jitter
+        this.currentBackoffMs = Math.min(this.currentBackoffMs * 1.5, this.maxBackoffMs)
+
         this.reconnectTimer = window.setTimeout(() => {
           this.reconnectTimer = null
           this.syncMissedEvents().finally(() => {
             this.initStream()
           })
-        }, 3000)
+        }, delay)
       }
     }
   }
 
   private handleEvent(event: RealtimeEventData) {
     if (event.eventId) {
+      if (this.processedEventIds.has(event.eventId)) {
+        return // Guaranteed zero duplicate execution
+      }
+      this.processedEventIds.add(event.eventId)
+      if (this.processedEventIds.size > 1000) {
+        const iter = this.processedEventIds.values()
+        for (let i = 0; i < 200; i++) {
+          const val = iter.next().value
+          if (val !== undefined) this.processedEventIds.delete(val)
+        }
+      }
       this.lastEventId = Math.max(this.lastEventId, event.eventId)
     }
 
@@ -133,6 +180,14 @@ class DashboardRealtimeService {
       case 'table.updated':
       case 'table.deleted':
         void useTableStore.getState().fetchTables()
+        break
+      case 'menu.created':
+      case 'menu.updated':
+      case 'menu.deleted':
+      case 'category.created':
+      case 'category.updated':
+      case 'category.deleted':
+        void useMenuStore.getState().fetchMenu()
         break
       default:
         break
@@ -327,7 +382,9 @@ class DashboardRealtimeService {
       window.clearTimeout(this.reconnectTimer)
       this.reconnectTimer = null
     }
+    this.stopFallbackPolling()
     this.isConnecting = false
+    this.isConnected = false
   }
 }
 

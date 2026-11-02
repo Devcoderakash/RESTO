@@ -46,3 +46,4 @@ if order.tracking_token_hash:
 - **Frontend Inspection:** Neither `VITE_SUPABASE_SERVICE_ROLE_KEY` nor database credentials exist in `frontend/.env`, `dashboard/.env`, or the compiled Vite dist bundles.
 - **Backend Inspection:** Supabase service-role keys and PostgreSQL credentials reside solely within Render server-side environment variables.
 - **Credential Redaction in Logs:** All database configuration logging in `backend/config/settings.py` strips passwords, hosts, and usernames, outputting only validated boolean flags and scheme protocols.
+

@@ -55,3 +55,4 @@ Vite 8 production builds were compiled and measured locally:
   - CSS Bundle Size: **41.83 kB** (Gzip: **7.77 kB**)
 
 Both bundles stay well within standard web performance budgets, ensuring sub-second paint times on mobile 4G networks.
+

@@ -7,6 +7,7 @@ from rest_framework.exceptions import NotFound, ValidationError
 from apps.menu.models import Category, MenuItem
 from apps.restaurants.services import get_restaurant_by_slug
 from apps.dashboard.permissions import IsStaffOrDashboardAccess
+from apps.realtime.bus import publish_event_on_commit
 
 def format_menu_item(item: MenuItem, category_map: dict = None) -> dict:
     cat_name = category_map.get(item.category_id, "Uncategorized") if category_map and item.category_id else (item.category.name if item.category else "Uncategorized")
@@ -109,7 +110,9 @@ def staff_menu(request):
             sort_order=int(data.get("sortOrder", 0)),
             available=bool(data.get("available", True)),
         )
-        return Response(format_menu_item(item), status=201)
+        formatted = format_menu_item(item)
+        publish_event_on_commit(str(restaurant.id), "menu.created", "menu_item", str(item.id), formatted)
+        return Response(formatted, status=201)
 
 @api_view(["PATCH", "DELETE"])
 @permission_classes([IsStaffOrDashboardAccess])
@@ -138,9 +141,13 @@ def staff_menu_item_detail(request, pk):
         if "prepTimeMinutes" in data or "preparationTimeMinutes" in data:
             item.preparation_time_minutes = int(data.get("prepTimeMinutes") or data.get("preparationTimeMinutes"))
         item.save()
-        return Response(format_menu_item(item))
+        formatted = format_menu_item(item)
+        publish_event_on_commit(str(restaurant.id), "menu.updated", "menu_item", str(item.id), formatted)
+        return Response(formatted)
     elif request.method == "DELETE":
+        item_id = item.id
         item.delete()
+        publish_event_on_commit(str(restaurant.id), "menu.deleted", "menu_item", str(item_id), {"id": item_id})
         return Response(status=204)
 
 @api_view(["PATCH"])
@@ -156,7 +163,9 @@ def staff_menu_item_availability(request, pk):
     if available is not None:
         item.available = bool(available)
         item.save(update_fields=["available"])
-    return Response(format_menu_item(item))
+    formatted = format_menu_item(item)
+    publish_event_on_commit(str(restaurant.id), "menu.updated", "menu_item", str(item.id), formatted)
+    return Response(formatted)
 
 @api_view(["GET", "POST"])
 @permission_classes([IsStaffOrDashboardAccess])
@@ -184,14 +193,16 @@ def staff_categories(request):
         sort_order=int(data.get("sortOrder", 0)),
         is_visible=bool(data.get("isVisible", True)),
     )
-    return Response({
+    cat_payload = {
         "id": cat.id,
         "name": cat.name,
         "description": cat.description,
         "image_url": cat.image_url,
         "sort_order": cat.sort_order,
         "is_visible": cat.is_visible,
-    }, status=201)
+    }
+    publish_event_on_commit(str(restaurant.id), "category.created", "category", str(cat.id), cat_payload)
+    return Response(cat_payload, status=201)
 
 @api_view(["PUT", "DELETE"])
 @permission_classes([IsStaffOrDashboardAccess])
@@ -211,14 +222,18 @@ def staff_category_detail(request, pk):
         if "sortOrder" in data: cat.sort_order = int(data["sortOrder"])
         if "isVisible" in data: cat.is_visible = bool(data["isVisible"])
         cat.save()
-        return Response({
+        cat_payload = {
             "id": cat.id,
             "name": cat.name,
             "description": cat.description,
             "image_url": cat.image_url,
             "sort_order": cat.sort_order,
             "is_visible": cat.is_visible,
-        })
+        }
+        publish_event_on_commit(str(restaurant.id), "category.updated", "category", str(cat.id), cat_payload)
+        return Response(cat_payload)
     elif request.method == "DELETE":
+        cat_id = cat.id
         cat.delete()
+        publish_event_on_commit(str(restaurant.id), "category.deleted", "category", str(cat_id), {"id": cat_id})
         return Response(status=204)

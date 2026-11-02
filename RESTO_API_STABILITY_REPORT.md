@@ -62,3 +62,4 @@ In [`render.yaml`](file:///Users/akashlodhi/Downloads/RESTO/render.yaml):
   gunicorn -k gthread --threads 4 --workers 2 --timeout 120 config.wsgi:application
   ```
 - Result: 8 concurrent worker threads handle long-lived SSE connections and high-frequency dashboard polling simultaneously without thread exhaustion.
+

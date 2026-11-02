@@ -28,6 +28,8 @@ export const MenuPage: React.FC = () => {
   const {
     items,
     categories,
+    isLoading,
+    isRefreshing,
     searchQuery,
     categoryFilter,
     dietFilter,
@@ -209,7 +211,24 @@ export const MenuPage: React.FC = () => {
       </Card>
 
       {/* Menu Items List */}
-      {filteredItems.length === 0 ? (
+      {isRefreshing && (
+        <div className="mb-3 text-right">
+          <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-brand-700 bg-brand-50 px-2.5 py-0.5 rounded-full border border-brand-200 animate-pulse">
+            Syncing menu catalog…
+          </span>
+        </div>
+      )}
+      {isLoading && items.length === 0 ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+          {[1, 2, 3, 4, 5, 6].map((n) => (
+            <div key={n} className="rounded-2xl bg-white border border-beige/80 p-4 animate-pulse space-y-3">
+              <div className="w-full h-36 bg-cream-200 rounded-xl" />
+              <div className="h-4 w-3/4 bg-cream-200 rounded" />
+              <div className="h-3 w-1/2 bg-cream-200 rounded" />
+            </div>
+          ))}
+        </div>
+      ) : filteredItems.length === 0 ? (
         <EmptyState
           title="No menu items match your criteria"
           description="Try resetting your filters or create a new dish item."

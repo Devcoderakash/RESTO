@@ -6,6 +6,10 @@ import { usePaymentStore } from './usePaymentStore'
 
 interface OrderState {
   orders: Order[]
+  isLoading: boolean
+  isRefreshing: boolean
+  hasLoadedOnce: boolean
+  error: string | null
   selectedOrder: Order | null
   searchQuery: string
   statusFilter: string
@@ -24,22 +28,66 @@ interface OrderState {
   resetOrders: () => void
 }
 
-export const useOrderStore = create<OrderState>((set) => ({
-  orders: [],
+function getStoredOrders(): Order[] {
+  try {
+    const raw = localStorage.getItem('resto_cache_dashboard_orders')
+    if (raw) {
+      const parsed = JSON.parse(raw)
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed
+    }
+  } catch {}
+  return []
+}
+
+const initialOrders = getStoredOrders()
+
+export const useOrderStore = create<OrderState>((set, get) => ({
+  orders: initialOrders,
+  isLoading: initialOrders.length === 0,
+  isRefreshing: false,
+  hasLoadedOnce: initialOrders.length > 0,
+  error: null,
   selectedOrder: null,
   searchQuery: '',
   statusFilter: 'ALL',
   tableFilter: 'ALL',
   dateFilter: 'ALL',
-  setOrders: (orders) => set({ orders }),
+  setOrders: (orders) => {
+    try {
+      localStorage.setItem('resto_cache_dashboard_orders', JSON.stringify(orders))
+    } catch {}
+    set({ orders, hasLoadedOnce: true, isLoading: false })
+  },
   fetchOrders: async () => {
+    const current = get().orders
+    if (current.length > 0) {
+      set({ isRefreshing: true, error: null })
+    } else {
+      set({ isLoading: true, error: null })
+    }
     try {
       const orders = await dashboardApi.getOrders()
-      set({ orders })
+      try {
+        localStorage.setItem('resto_cache_dashboard_orders', JSON.stringify(orders))
+      } catch {}
+      set({
+        orders,
+        isLoading: false,
+        isRefreshing: false,
+        hasLoadedOnce: true,
+        error: null,
+      })
       return orders
     } catch (error) {
-      console.warn('Failed to fetch orders:', error)
-      return []
+      const message = error instanceof Error ? error.message : 'Unable to load orders.'
+      console.warn('Failed to fetch orders:', message)
+      // Never wipe existing orders on error!
+      set({
+        isLoading: false,
+        isRefreshing: false,
+        error: message,
+      })
+      return get().orders
     }
   },
   setSelectedOrder: (order) => set({ selectedOrder: order }),

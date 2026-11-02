@@ -26,6 +26,8 @@ import { toast } from 'sonner'
 export const TablesPage: React.FC = () => {
   const {
     tables,
+    isLoading,
+    isRefreshing,
     zoneFilter,
     statusFilter,
     setZoneFilter,
@@ -187,13 +189,33 @@ export const TablesPage: React.FC = () => {
           </select>
         </div>
 
-        <p className="text-xs text-charcoal-muted hidden sm:block">
-          Showing {filteredTables.length} table{filteredTables.length === 1 ? '' : 's'}
-        </p>
+        <div className="flex items-center gap-2">
+          {isRefreshing && (
+            <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-brand-700 bg-brand-50 px-2.5 py-0.5 rounded-full border border-brand-200 animate-pulse">
+              Syncing live availability…
+            </span>
+          )}
+          <p className="text-xs text-charcoal-muted hidden sm:block">
+            Showing {filteredTables.length} table{filteredTables.length === 1 ? '' : 's'}
+          </p>
+        </div>
       </div>
 
       {/* Tables Grid */}
-      {filteredTables.length === 0 ? (
+      {isLoading && tables.length === 0 ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5">
+          {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
+            <div key={n} className="p-5 rounded-2xl bg-white border border-beige/80 animate-pulse space-y-4">
+              <div className="flex justify-between items-center">
+                <div className="h-4 w-16 bg-cream-200 rounded" />
+                <div className="h-5 w-20 bg-cream-200 rounded-full" />
+              </div>
+              <div className="h-8 w-24 bg-cream-200 rounded" />
+              <div className="h-4 w-32 bg-cream-200 rounded pt-2" />
+            </div>
+          ))}
+        </div>
+      ) : filteredTables.length === 0 ? (
         <EmptyState
           title="No tables found in this zone"
           description="Try selecting a different floor zone or reset your status filter."

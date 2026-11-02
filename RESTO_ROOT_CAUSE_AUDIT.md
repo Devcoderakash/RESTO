@@ -225,3 +225,4 @@ This audit investigates, isolates, and documents the root causes for the 15 crit
 - **Fix Implemented:** Implemented dynamic occupancy calculation `get_active_table_numbers(restaurant)`. Tables are marked `occupied` if and only if an order for that table exists with `status not in ('completed', 'cancelled')`. When an order transitions to `completed` or `cancelled`, the table is released automatically.
 - **Verification Status:** PASS
 - **Remaining Risk:** Requires dry-run cleanup of historical test orders (detailed in Report 2).
+

@@ -17,13 +17,34 @@ import { FoodItem, CategoryId, MenuCategory } from '../types/menu'
 import { toast } from 'sonner'
 import { getAvailableTables, getMenu } from '../services/api'
 
+function getCachedCustomerMenu(): { items: FoodItem[]; categories: MenuCategory[] } {
+  try {
+    const raw = localStorage.getItem('resto_cache_customer_menu')
+    if (raw) {
+      const parsed = JSON.parse(raw)
+      if (Array.isArray(parsed?.items) && parsed.items.length > 0) {
+        return {
+          items: parsed.items,
+          categories: Array.isArray(parsed?.categories) && parsed.categories.length > 0
+            ? parsed.categories
+            : [{ id: 'all', name: 'All Items', icon: 'UtensilsCrossed' }],
+        }
+      }
+    }
+  } catch {}
+  return { items: [], categories: [{ id: 'all', name: 'All Items', icon: 'UtensilsCrossed' }] }
+}
+
 export const MenuPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
   const { currentTable, hasSelectedTable, setTable } = useTableStore()
-  const [foodItems, setFoodItems] = useState<FoodItem[]>([])
-  const [menuCategories, setMenuCategories] = useState<MenuCategory[]>([{ id: 'all', name: 'All Items' }])
-  const [isMenuLoading, setIsMenuLoading] = useState(true)
+
+  const initialMenuCache = useMemo(getCachedCustomerMenu, [])
+  const [foodItems, setFoodItems] = useState<FoodItem[]>(initialMenuCache.items)
+  const [menuCategories, setMenuCategories] = useState<MenuCategory[]>(initialMenuCache.categories)
+  const [isMenuLoading, setIsMenuLoading] = useState(() => initialMenuCache.items.length === 0)
+  const [isMenuRefreshing, setIsMenuRefreshing] = useState(false)
   const [menuError, setMenuError] = useState<string | null>(null)
   const [menuRefresh, setMenuRefresh] = useState(0)
 
@@ -46,18 +67,39 @@ export const MenuPage: React.FC = () => {
 
   useEffect(() => {
     let active = true
+    if (foodItems.length > 0) setIsMenuRefreshing(true)
+    else setIsMenuLoading(true)
+
     getMenu()
       .then((response) => {
         if (!active) return
+        const freshCategories = [{ id: 'all', name: 'All Items', icon: 'UtensilsCrossed' }, ...response.categories]
+        try {
+          localStorage.setItem('resto_cache_customer_menu', JSON.stringify({
+            items: response.items,
+            categories: freshCategories,
+          }))
+        } catch {}
         setFoodItems(response.items)
-        setMenuCategories([{ id: 'all', name: 'All Items', icon: 'UtensilsCrossed' }, ...response.categories])
+        setMenuCategories(freshCategories)
         setMenuError(null)
       })
       .catch((error: unknown) => {
-        if (active) setMenuError(error instanceof Error ? error.message : 'Unable to load the menu.')
+        if (active) {
+          const msg = error instanceof Error ? error.message : 'Unable to load the menu.'
+          // Only show fatal error if we have 0 menu items to display!
+          if (foodItems.length === 0) {
+            setMenuError(msg)
+          } else {
+            console.warn('Background menu sync failed:', msg)
+          }
+        }
       })
       .finally(() => {
-        if (active) setIsMenuLoading(false)
+        if (active) {
+          setIsMenuLoading(false)
+          setIsMenuRefreshing(false)
+        }
       })
     return () => {
       active = false

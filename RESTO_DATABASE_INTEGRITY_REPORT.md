@@ -104,3 +104,4 @@ EITHER:
    ```
 
 Both options leave the restaurant in a 100% clean initial state with all tables `Available`.
+

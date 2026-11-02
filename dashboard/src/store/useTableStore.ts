@@ -5,6 +5,10 @@ import { dashboardApi } from '../services/api'
 
 interface TableState {
   tables: Table[]
+  isLoading: boolean
+  isRefreshing: boolean
+  hasLoadedOnce: boolean
+  error: string | null
   selectedTable: Table | null
   zoneFilter: string
   statusFilter: string
@@ -27,22 +31,66 @@ function sortTables(tables: Table[]): Table[] {
   )
 }
 
+function getStoredTables(): Table[] {
+  try {
+    const raw = localStorage.getItem('resto_cache_dashboard_tables')
+    if (raw) {
+      const parsed = JSON.parse(raw)
+      if (Array.isArray(parsed) && parsed.length > 0) return sortTables(parsed)
+    }
+  } catch {}
+  return []
+}
+
+const initialTables = getStoredTables()
+
 export const useTableStore = create<TableState>((set, get) => ({
-  tables: [],
+  tables: initialTables,
+  isLoading: initialTables.length === 0,
+  isRefreshing: false,
+  hasLoadedOnce: initialTables.length > 0,
+  error: null,
   selectedTable: null,
   zoneFilter: 'ALL',
   statusFilter: 'ALL',
-  setTables: (tables) => set({ tables: sortTables(tables) }),
+  setTables: (tables) => {
+    const sorted = sortTables(tables)
+    try {
+      localStorage.setItem('resto_cache_dashboard_tables', JSON.stringify(sorted))
+    } catch {}
+    set({ tables: sorted, hasLoadedOnce: true, isLoading: false })
+  },
   fetchTables: async () => {
+    const current = get().tables
+    if (current.length > 0) {
+      set({ isRefreshing: true, error: null })
+    } else {
+      set({ isLoading: true, error: null })
+    }
     try {
       const tables = await dashboardApi.getTables()
       const sorted = sortTables(tables)
-      set({ tables: sorted })
+      try {
+        localStorage.setItem('resto_cache_dashboard_tables', JSON.stringify(sorted))
+      } catch {}
+      set({
+        tables: sorted,
+        isLoading: false,
+        isRefreshing: false,
+        hasLoadedOnce: true,
+        error: null,
+      })
       return sorted
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unable to load tables.'
       console.warn('Failed to fetch tables:', message)
-      return []
+      // Never wipe existing tables on error!
+      set({
+        isLoading: false,
+        isRefreshing: false,
+        error: message,
+      })
+      return get().tables
     }
   },
   setSelectedTable: (table) => set({ selectedTable: table }),

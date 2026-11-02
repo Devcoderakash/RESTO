@@ -33,6 +33,8 @@ import { toast } from 'sonner'
 export const OrdersPage: React.FC = () => {
   const {
     orders,
+    isLoading,
+    isRefreshing,
     searchQuery,
     statusFilter,
     tableFilter,
@@ -328,10 +330,27 @@ export const OrdersPage: React.FC = () => {
             )}
           </div>
         </div>
+        {isRefreshing && (
+          <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-brand-700 bg-brand-50 px-2.5 py-0.5 rounded-full border border-brand-200 animate-pulse">
+            Syncing live orders…
+          </span>
+        )}
       </div>
 
       {/* Orders List: Dual Desktop Table & Mobile Card Stack */}
-      {filteredOrders.length === 0 ? (
+      {isLoading && orders.length === 0 ? (
+        <div className="space-y-3">
+          {[1, 2, 3, 4, 5].map((n) => (
+            <div key={n} className="p-4 rounded-2xl bg-white border border-beige/80 animate-pulse flex items-center justify-between">
+              <div className="space-y-2">
+                <div className="h-4 w-28 bg-cream-200 rounded" />
+                <div className="h-3 w-40 bg-cream-200 rounded" />
+              </div>
+              <div className="h-6 w-20 bg-cream-200 rounded-full" />
+            </div>
+          ))}
+        </div>
+      ) : filteredOrders.length === 0 ? (
         <EmptyState
           title="No table orders found"
           description="Try adjusting your status filter or clearing search keywords to see all tickets."

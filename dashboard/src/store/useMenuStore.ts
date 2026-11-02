@@ -6,6 +6,10 @@ import { dashboardApi } from '../services/api'
 interface MenuState {
   items: MenuItem[]
   categories: Category[]
+  isLoading: boolean
+  isRefreshing: boolean
+  hasLoadedOnce: boolean
+  error: string | null
   selectedItem: MenuItem | null
   selectedCategory: Category | null
   searchQuery: string
@@ -35,9 +39,31 @@ interface MenuState {
   resetMenu: () => void
 }
 
+function getStoredMenu(): { items: MenuItem[]; categories: Category[] } {
+  try {
+    const raw = localStorage.getItem('resto_cache_dashboard_menu')
+    if (raw) {
+      const parsed = JSON.parse(raw)
+      if (Array.isArray(parsed?.items) && parsed.items.length > 0) {
+        return {
+          items: parsed.items,
+          categories: Array.isArray(parsed?.categories) ? parsed.categories : [],
+        }
+      }
+    }
+  } catch {}
+  return { items: [], categories: [] }
+}
+
+const initialMenu = getStoredMenu()
+
 export const useMenuStore = create<MenuState>((set, get) => ({
-  items: [],
-  categories: [],
+  items: initialMenu.items,
+  categories: initialMenu.categories,
+  isLoading: initialMenu.items.length === 0,
+  isRefreshing: false,
+  hasLoadedOnce: initialMenu.items.length > 0,
+  error: null,
   selectedItem: null,
   selectedCategory: null,
   searchQuery: '',
@@ -45,13 +71,41 @@ export const useMenuStore = create<MenuState>((set, get) => ({
   dietFilter: 'ALL',
   availabilityFilter: 'ALL',
   viewMode: 'grid',
-  setMenu: (items, categories) => set({ items, categories }),
+  setMenu: (items, categories) => {
+    try {
+      localStorage.setItem('resto_cache_dashboard_menu', JSON.stringify({ items, categories }))
+    } catch {}
+    set({ items, categories, hasLoadedOnce: true, isLoading: false })
+  },
   fetchMenu: async () => {
+    const current = get().items
+    if (current.length > 0) {
+      set({ isRefreshing: true, error: null })
+    } else {
+      set({ isLoading: true, error: null })
+    }
     try {
       const menu = await dashboardApi.getMenu()
-      set({ items: menu.items, categories: menu.categories })
+      try {
+        localStorage.setItem('resto_cache_dashboard_menu', JSON.stringify(menu))
+      } catch {}
+      set({
+        items: menu.items,
+        categories: menu.categories,
+        isLoading: false,
+        isRefreshing: false,
+        hasLoadedOnce: true,
+        error: null,
+      })
     } catch (error) {
-      console.warn('Failed to fetch menu:', error)
+      const message = error instanceof Error ? error.message : 'Unable to load menu.'
+      console.warn('Failed to fetch menu:', message)
+      // Never wipe existing items on error!
+      set({
+        isLoading: false,
+        isRefreshing: false,
+        error: message,
+      })
     }
   },
   setSelectedItem: (item) => set({ selectedItem: item }),
