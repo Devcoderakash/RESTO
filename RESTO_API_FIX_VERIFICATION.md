@@ -141,3 +141,4 @@ $ curl -s -H "Authorization: Bearer demo-staff-token-manager" \
 - **All 740 Records:** Accessible via Django ORM with zero drift.
 - **Security & RLS:** In force. Public endpoints are tenant-filtered; staff endpoints require Bearer auth.
 - **Frontend Usability:** Both customer ordering and staff kitchen dashboards are fully operational.
+

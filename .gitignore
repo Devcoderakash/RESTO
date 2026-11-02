@@ -26,12 +26,18 @@ db.sqlite3
 # System & OS
 .DS_Store
 Thumbs.db
+*.backup*
+*backup*.json
+verification_results.json
+
 
 # IDE & Editor
 .idea/
 .vscode/
 *.swp
 *.swo
+pyrightconfig.json
+
 
 # Logs
 logs/

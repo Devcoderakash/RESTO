@@ -62,9 +62,13 @@ urlpatterns = [
 
     # Tables
     path("api/tables/availability", table_views.table_availability, name="table-availability"),
+    path("api/tables/availability/", table_views.table_availability),
     path("api/tables", table_views.staff_tables, name="staff-tables"),
+    path("api/tables/", table_views.staff_tables, name="staff-tables-slash"),
     path("api/tables/<str:pk>", table_views.staff_table_detail, name="staff-table-detail"),
+    path("api/tables/<str:pk>/", table_views.staff_table_detail),
     path("api/tables/<str:pk>/status", table_views.staff_table_status, name="staff-table-status"),
+    path("api/tables/<str:pk>/status/", table_views.staff_table_status),
 
     # Menu & Categories
     path("api/menu", menu_views.public_menu, name="public-menu"),
@@ -117,9 +121,13 @@ urlpatterns = [
     path("restaurants/settings", restaurant_views.update_restaurant_settings),
     path("restaurants/<str:slug>", restaurant_views.restaurant_detail),
     path("tables/availability", table_views.table_availability),
+    path("tables/availability/", table_views.table_availability),
     path("tables", table_views.staff_tables),
+    path("tables/", table_views.staff_tables),
     path("tables/<str:pk>", table_views.staff_table_detail),
+    path("tables/<str:pk>/", table_views.staff_table_detail),
     path("tables/<str:pk>/status", table_views.staff_table_status),
+    path("tables/<str:pk>/status/", table_views.staff_table_status),
     path("menu", menu_views.public_menu),
     path("menu/categories", menu_views.public_categories),
     path("staff/menu", menu_views.staff_menu),

@@ -108,3 +108,4 @@ Every column in Django's models (`backend/apps/*/models.py`) was cross-checked a
    - Operational tables (`orders`, `payments`, `service_requests`, `staff`, `realtime_events`) have strict policies restricting mutations and anonymous PostgREST access.
    - Catalog tables (`restaurants`, `restaurant_tables`, `categories`, `menu_items`) allow `SELECT` for active rows.
    - Direct PostgreSQL connections (`postgres` role) are the table owners and have full administrative data access.
+

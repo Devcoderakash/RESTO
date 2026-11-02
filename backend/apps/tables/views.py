@@ -182,9 +182,13 @@ def staff_tables(request):
         return Response(response_payload, status=201)
 
 
-@api_view(["GET", "PUT", "DELETE"])
+@api_view(["GET", "POST", "PUT", "DELETE"])
 @permission_classes([IsStaffOrDashboardAccess])
 def staff_table_detail(request, pk):
+    # Safe routing fallback: if client calls POST on detail URL or uses /tables/new or /tables/create
+    if request.method == "POST" or pk in ["", "new", "create", "tables"]:
+        return staff_tables(request)
+
     slug = request.query_params.get("restaurantSlug") or request.data.get("restaurantSlug")
     restaurant = get_restaurant_by_slug(slug)
     norm_pk = str(pk).zfill(2) if str(pk).isdigit() else str(pk)

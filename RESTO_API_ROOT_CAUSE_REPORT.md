@@ -92,3 +92,4 @@ return {
 ```
 
 - When configured at the top level, Django's `DatabaseWrapper` intercepts `DISABLE_SERVER_SIDE_CURSORS` and instructs its query compiler to use client-side buffered cursors, while omitting the key from the DSN dictionary passed to `psycopg2.connect()`.
+

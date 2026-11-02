@@ -330,26 +330,22 @@ export const dashboardApi = {
     return normalizeTable(unwrap(result))
   },
   async updateTable(tableId: string, input: Partial<Table>): Promise<void> {
-    if (input.tableNumber !== undefined || input.capacity !== undefined || input.zone !== undefined) {
-      const current = await request<any>(`/tables?restaurantSlug=${encodeURIComponent(restaurantSlug)}`)
-      const table = listFrom(current, 'tables').find((candidate) => String(candidate.id) === tableId)
-      if (!table) throw new Error('Table not found.')
-      const status = input.status ?? normalizeTable(table).status
-      const rawNumber = String(input.tableNumber ?? table.tableNumber ?? table.table_number).trim()
+    if (input.tableNumber !== undefined || input.capacity !== undefined || input.zone !== undefined || input.status !== undefined) {
+      const rawNumber = input.tableNumber !== undefined ? String(input.tableNumber).trim() : undefined
+      const status = input.status !== undefined
+        ? (input.status === 'Available' ? 'available' : input.status === 'Occupied' ? 'occupied' : 'inactive')
+        : undefined
+
       await request(`/tables/${encodeURIComponent(tableId)}?restaurantSlug=${encodeURIComponent(restaurantSlug)}`, {
         method: 'PUT',
         body: JSON.stringify({
           tableNumber: rawNumber,
           table_number: rawNumber,
-          capacity: Number(input.capacity ?? table.capacity) || 4,
-          zone: input.zone ?? table.zone,
-          status: status === 'Available' ? 'available' : status === 'Occupied' ? 'occupied' : 'inactive',
+          capacity: input.capacity !== undefined ? (Number(input.capacity) || 4) : undefined,
+          zone: input.zone,
+          status,
         }),
       })
-      return
-    }
-    if (input.status) {
-      await this.setTableStatus(tableId, input.status)
       return
     }
     throw new Error('No table changes were provided.')
