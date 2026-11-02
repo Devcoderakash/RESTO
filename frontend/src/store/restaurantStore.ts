@@ -9,20 +9,7 @@ interface RestaurantState {
 }
 
 export const useRestaurantStore = create<RestaurantState>((set) => ({
-  info: {
-    id: 'rest-olive-ember-01',
-    name: 'The Olive & Ember',
-    slug: 'olive-and-ember',
-    description: 'Artisanal Mediterranean & Wood-Fired Hearth Dining',
-    address: '14 Wood Street, Indiranagar, Bengaluru',
-    phone: '+91 80 4123 4567',
-    email: 'contact@oliveandember.com',
-    wifiSsid: 'OliveEmber-Guest',
-    wifiPassword: 'FiredWood2026',
-    taxPercentage: 5,
-    serviceChargePercentage: 0,
-    currency: 'INR',
-  },
+  info: null,
   isLoading: false,
   error: null,
   fetchInfo: async () => {

@@ -1,12 +1,16 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { Toaster } from 'sonner'
 import { TableSelectionPage } from './pages/TableSelectionPage'
 import { MenuPage } from './pages/MenuPage'
 import { CheckoutPage } from './pages/CheckoutPage'
 import { OrderTrackingPage } from './pages/OrderTrackingPage'
+import { useRestaurantStore } from './store/restaurantStore'
 
 export function App() {
+  useEffect(() => {
+    useRestaurantStore.getState().fetchInfo()
+  }, [])
   return (
     <BrowserRouter>
       <Toaster

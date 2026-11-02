@@ -70,6 +70,12 @@ def update_restaurant_settings(request):
     for field in ["name", "description", "address", "phone", "email", "logo_url", "wifi_ssid", "wifi_password", "currency", "timezone"]:
         if field in data:
             setattr(restaurant, field, data[field])
+    if "wifiSsid" in data:
+        restaurant.wifi_ssid = data["wifiSsid"]
+    if "wifiPassword" in data:
+        restaurant.wifi_password = data["wifiPassword"]
+    if "logoUrl" in data:
+        restaurant.logo_url = data["logoUrl"]
     if "taxPercentage" in data or "tax_percentage" in data:
         restaurant.tax_percentage = data.get("taxPercentage") or data.get("tax_percentage")
     if "serviceChargePercentage" in data or "service_charge_percentage" in data:
