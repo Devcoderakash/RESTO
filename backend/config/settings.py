@@ -66,39 +66,25 @@ WSGI_APPLICATION = "config.wsgi.application"
 ASGI_APPLICATION = "config.asgi.application"
 
 # Database Configuration (Supabase PostgreSQL as Single Source of Truth)
-# Check standard and common alias environment variable names, strip quotes and whitespace
-RAW_DATABASE_URL = (
-    os.getenv("DATABASE_URL")
-    or os.getenv("SUPABASE_DATABASE_URL")
-    or os.getenv("POSTGRES_URL")
-    or os.getenv("POSTGRESQL_URL")
-    or os.getenv("DB_URL")
-    or ""
-).strip().strip("'\"")
+from config.db_utils import parse_database_url, get_masked_db_summary
+from django.core.exceptions import ImproperlyConfigured
 
-DATABASE_URL = RAW_DATABASE_URL
-IS_REAL_POSTGRES = (
-    DATABASE_URL.startswith("postgres://") or DATABASE_URL.startswith("postgresql://")
-) and not ("example-project" in DATABASE_URL or "placeholder" in DATABASE_URL)
+DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
+db_config = parse_database_url(DATABASE_URL)
 
-if IS_REAL_POSTGRES:
-    # Supabase Connection Pooler (Port 6543 vs 5432) Compatibility:
-    # When connecting via Supavisor Transaction Pooler (port 6543), conn_max_age must be 0
-    # and server-side cursors disabled to allow safe transaction multiplexing.
-    is_transaction_pooler = ":6543" in DATABASE_URL
-    default_conn_max_age = 0 if is_transaction_pooler else int(os.getenv("DB_CONN_MAX_AGE", "600"))
-
-    db_config = dj_database_url.config(
-        default=DATABASE_URL,
-        conn_max_age=default_conn_max_age,
-        ssl_require=os.getenv("DB_SSL_REQUIRE", "True").lower() in ("true", "1"),
-    )
-    if is_transaction_pooler:
-        db_config.setdefault("OPTIONS", {})["disable_server_side_cursors"] = True
-
+if db_config:
     DATABASES = {"default": db_config}
+    # Log safe summary without exposing passwords
+    print(f"[SETTINGS] {get_masked_db_summary(db_config)}")
 else:
-    # Development and safe build fallback when DATABASE_URL is not injected during build phase
+    if not DEBUG:
+        # STRICT PRODUCTION REQUIREMENT: Never silently enable SQLite in production
+        raise ImproperlyConfigured(
+            "CRITICAL: DATABASE_URL pointing to Supabase PostgreSQL is required in production. "
+            "SQLite fallback is strictly prohibited in production. "
+            "Ensure DATABASE_URL is configured in Render environment variables."
+        )
+    # Local development fallback only when DJANGO_DEBUG=True
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.sqlite3",

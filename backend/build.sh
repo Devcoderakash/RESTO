@@ -1,14 +1,21 @@
 #!/usr/bin/env bash
-# Exit on error
+# Exit immediately on error
 set -o errexit
+set -o pipefail
 
+echo "=== RESTO PRODUCTION BUILD START ==="
 pip install --upgrade pip
 pip install -r requirements.txt
 
-# Run migrations with safe fallback
-python manage.py migrate --fake-initial --no-input || python manage.py migrate --no-input || echo "Migration step completed with fallback"
+echo "=== VALIDATING DATABASE CONFIGURATION ==="
+python manage.py check --database default
 
-# Safe seed (skips if data exists)
-python seed_data.py || true
+echo "=== EXECUTING DATABASE MIGRATIONS ==="
+python manage.py migrate --fake-initial --no-input
+
+echo "=== VERIFYING DATABASE SEED STATE ==="
+python seed_data.py
+
+echo "=== RESTO PRODUCTION BUILD COMPLETED SUCCESSFULLY ==="
 
 
