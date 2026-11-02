@@ -140,8 +140,29 @@ Executed via [`test_table_creation_suite.py`](file:///Users/akashlodhi/Downloads
 
 ---
 
-## 6. Build & Verification Status
+## 6. Deployment Commit & Production Live Verification
 
-- **Dashboard Build (`npm run build`)**: Transformed 2,097 modules, zero TypeScript errors, bundle generated in 452 ms.
-- **Frontend Build (`npm run build`)**: Transformed 2,071 modules, zero TypeScript errors, bundle generated in 352 ms.
-- **Backend Django Diagnostics**: `check --database default` executed with zero warnings.
+- **Deployment Commit**: [`baf111d`](https://github.com/Devcoderakash/RESTO/commit/baf111d) (`fix(tables): fix Add New Table flow, gthread concurrency, dynamic occupancy, and token security`)
+- **Dashboard Production Build (`npm run build`)**: Transformed 2,097 modules, zero TypeScript errors, bundle generated in 452 ms.
+- **Frontend Production Build (`npm run build`)**: Transformed 2,071 modules, zero TypeScript errors, bundle generated in 352 ms.
+- **Backend Django Diagnostics**: `check --database default` executed with 0 issues.
+
+### Live Production End-to-End Verification (`https://resto-vc53.onrender.com`)
+
+| Action / Test Case | HTTP Method & Path | Expected Status | Live Production Result | Status |
+| :--- | :--- | :---: | :--- | :---: |
+| **Create Table 04** | `POST /api/tables` | `201 Created` | `HTTP/2 201` (`id: tbl-291d9d25`, `tableNumber: "04"`, `capacity: 2`, `zone: "VIP Lounge"`, `status: "available"`) | **PASS** |
+| **Duplicate Table Rejection** | `POST /api/tables` | `409 Conflict` | `HTTP/2 409` (`code: DUPLICATE_TABLE`, `message: Table number '04' already exists in The Olive & Ember.`) | **PASS** |
+| **Missing Table Number** | `POST /api/tables` | `400 Bad Request` | `HTTP/2 400` (`code: VALIDATION_ERROR`, `message: Table number is required.`) | **PASS** |
+| **Invalid Capacity (`-10`)** | `POST /api/tables` | `400 Bad Request` | `HTTP/2 400` (`code: VALIDATION_ERROR`, `message: Seating capacity must be a positive integer between 1 and 100.`) | **PASS** |
+| **Unauthorized Attempt** | `POST /api/tables` | `401 Unauthorized` | `HTTP/2 401` (`code: UNAUTHENTICATED`, `message: A bearer access token is required`) | **PASS** |
+| **Production Persistence** | `GET /api/tables` | `200 OK` | `HTTP/2 200` (Tables 01, 02, 03, 04 retrieved with 100% data integrity) | **PASS** |
+| **Dynamic Table Availability** | `GET /api/tables/availability` | `200 OK` | `HTTP/2 200` (All newly configured tables evaluated as `available`) | **PASS** |
+
+---
+
+## 7. Remaining Issues & Next Steps
+
+* **Table Sanitization / Cleaning Flow**: The dashboard supports changing table status to "Cleaning". When a dining session ends, tables can either auto-transition to "Available" or require manual waiter sanitization confirmation.
+* **Bulk Seeding for Initial Launch**: The remaining tables (05 through 20) can now either be created via the dashboard UI using "Add New Table", or seeded via an admin management command. All create/read/update/delete operations are verified and permanent in Supabase PostgreSQL.
+
