@@ -54,18 +54,20 @@ def event_stream_generator(restaurant, target_order_id=None, last_event_id=0):
                 }
                 yield sse_format(frame)
 
-        # 3. Stream real-time events as they occur
-        while True:
+        # 3. Stream real-time events as they occur (bounded stream lifetime releases WSGI threads)
+        max_stream_seconds = 30
+        start_ts = time.time()
+        while time.time() - start_ts < max_stream_seconds:
             try:
-                # Wait up to 15 seconds for a new event
-                event_data = subscriber_queue.get(timeout=15)
+                # Wait up to 5 seconds for a new event
+                event_data = subscriber_queue.get(timeout=5)
                 # If filtered by specific order (customer tracking)
                 if target_order_id and event_data.get("entityId") != target_order_id:
                     continue
 
                 yield sse_format(event_data)
             except Exception:
-                # Heartbeat keep-alive frame every 15s prevents proxy dropouts
+                # Heartbeat keep-alive frame every 5s prevents proxy dropouts
                 yield ": keep-alive\n\n"
 
     finally:

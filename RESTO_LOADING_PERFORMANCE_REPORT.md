@@ -111,3 +111,4 @@ When `fetchTables()`, `fetchOrders()`, or `fetchMenu()` executes:
 - [x] Customer Menu Browsing: 0ms render confirmed via `MenuPage.tsx`.
 - [x] Zero-data wipe bug permanently eliminated.
 - [x] Non-blocking visual badges added across all modules.
+

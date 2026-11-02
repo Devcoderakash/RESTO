@@ -71,3 +71,4 @@ In accordance with opening day production requirements:
 - [x] Browser refresh tested: UI retains 100% of visible state across reloads.
 - [x] Network disconnection tested: UI retains visible records without wiping.
 - [x] Test order cleanup complete: all 8 physical tables available for new guests.
+

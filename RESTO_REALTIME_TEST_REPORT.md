@@ -114,3 +114,4 @@ To guarantee idempotent UI updates, the client maintains a ring buffer `Set<numb
 - [x] Heartbeat emission (15s interval) verified.
 - [x] Deduplication logic verified with zero duplicates.
 - [x] All 13 event types mapped and operational.
+

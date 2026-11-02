@@ -108,6 +108,9 @@ export const useOrderStore = create<OrderState>((set, get) => ({
           ? { ...order, orderStatus: status, updatedAt: new Date().toISOString() }
           : order,
       )
+      try {
+        localStorage.setItem('resto_cache_dashboard_orders', JSON.stringify(orders))
+      } catch {}
       return {
         orders,
         selectedOrder: state.selectedOrder?.id === orderId

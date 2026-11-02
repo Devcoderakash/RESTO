@@ -360,10 +360,15 @@ def update_order_status_service(order: Order, new_status: str, reason: str = Non
         if not locked_order:
             raise NotFound({"error": {"code": "NOT_FOUND", "message": "Order not found"}})
 
+        # Idempotent: If already in requested status, return immediately
+        if new_status == locked_order.status:
+            return locked_order
+
         valid_next = STATUS_TRANSITIONS.get(locked_order.status, [])
-        if new_status != locked_order.status and new_status not in valid_next:
+        if new_status not in valid_next:
+            allowed_msg = ", ".join(valid_next) if valid_next else "None (terminal state)"
             raise ValidationError(
-                {"error": {"code": "INVALID_STATUS_TRANSITION", "message": f"Cannot transition order from {locked_order.status} to {new_status}"}},
+                {"error": {"code": "INVALID_STATUS_TRANSITION", "message": f"Cannot transition order from '{locked_order.status}' to '{new_status}'. Allowed transitions: {allowed_msg}"}},
                 code="invalid_status"
             )
 

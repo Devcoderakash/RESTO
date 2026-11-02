@@ -64,3 +64,4 @@ During the production rollout of RESTO, several interconnected failures occurred
    Validate capacity (1-100), ensure table number is not empty, and normalize zero-padding (`01` vs `1`).
 4. **Header-Based Authentication**:
    Never pass credentials or tokens in URL queries.
+

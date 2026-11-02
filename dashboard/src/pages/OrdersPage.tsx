@@ -13,6 +13,7 @@ import {
   BellRing,
   Check,
   UtensilsCrossed,
+  Loader2,
 } from 'lucide-react'
 import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
@@ -55,6 +56,7 @@ export const OrdersPage: React.FC = () => {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
   const [cancelModalOrder, setCancelModalOrder] = useState<Order | null>(null)
   const [invoiceModalOrder, setInvoiceModalOrder] = useState<Order | null>(null)
+  const [updatingOrderIds, setUpdatingOrderIds] = useState<Set<string>>(new Set())
 
   const { tableRequests, billRequests, completeTableRequest, completeBillRequest } = useWaiterRequestStore()
   const activeTableRequests = tableRequests.filter((r) => r.status === 'pending')
@@ -98,11 +100,21 @@ export const OrdersPage: React.FC = () => {
   }
 
   const handleAdvanceStatus = async (order: Order, nextStatus: OrderStatus) => {
+    if (updatingOrderIds.has(order.id)) return // Prevent double-clicks / concurrent submissions
+    setUpdatingOrderIds((prev) => new Set(prev).add(order.id))
     try {
-      await updateOrderStatus(order.id, nextStatus)
-      toast.success(`Order ${order.id} updated to ${nextStatus}`)
+      const ok = await updateOrderStatus(order.id, nextStatus)
+      if (ok) {
+        toast.success(`Order #${order.orderNumber || order.id} updated to ${nextStatus}`)
+      }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Could not update order status')
+    } finally {
+      setUpdatingOrderIds((prev) => {
+        const next = new Set(prev)
+        next.delete(order.id)
+        return next
+      })
     }
   }
 
@@ -424,19 +436,34 @@ export const OrdersPage: React.FC = () => {
                     </div>
 
                     {/* Quick advance status action */}
-                    {action && (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleAdvanceStatus(order, action.nextStatus)
-                        }}
-                        className={`px-3 py-2 rounded-xl text-xs font-bold shadow-xs transition-all active:scale-95 flex items-center gap-1.5 ${action.className}`}
-                      >
-                        <span>{action.label}</span>
-                        <ArrowRight className="w-3.5 h-3.5" />
-                      </button>
-                    )}
+                    {action && (() => {
+                      const isProcessing = updatingOrderIds.has(order.id)
+                      return (
+                        <button
+                          type="button"
+                          disabled={isProcessing}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            void handleAdvanceStatus(order, action.nextStatus)
+                          }}
+                          className={`px-3 py-2 rounded-xl text-xs font-bold shadow-xs transition-all active:scale-95 flex items-center gap-1.5 ${
+                            isProcessing ? 'opacity-60 cursor-not-allowed bg-charcoal-400 text-white' : action.className
+                          }`}
+                        >
+                          {isProcessing ? (
+                            <>
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              <span>Updating…</span>
+                            </>
+                          ) : (
+                            <>
+                              <span>{action.label}</span>
+                              <ArrowRight className="w-3.5 h-3.5" />
+                            </>
+                          )}
+                        </button>
+                      )
+                    })()}
                   </div>
                 </div>
               )
@@ -507,15 +534,30 @@ export const OrdersPage: React.FC = () => {
                           onClick={(e) => e.stopPropagation()}
                         >
                           <div className="flex items-center justify-end gap-1.5">
-                            {action && (
-                              <button
-                                onClick={() => handleAdvanceStatus(order, action.nextStatus)}
-                                className={`px-2.5 py-1.5 rounded-lg text-xs font-bold shadow-xs transition-all active:scale-95 flex items-center gap-1 ${action.className}`}
-                              >
-                                <span>{action.label}</span>
-                                <ArrowRight className="w-3 h-3" />
-                              </button>
-                            )}
+                            {action && (() => {
+                              const isProcessing = updatingOrderIds.has(order.id)
+                              return (
+                                <button
+                                  disabled={isProcessing}
+                                  onClick={() => void handleAdvanceStatus(order, action.nextStatus)}
+                                  className={`px-2.5 py-1.5 rounded-lg text-xs font-bold shadow-xs transition-all active:scale-95 flex items-center gap-1 ${
+                                    isProcessing ? 'opacity-60 cursor-not-allowed bg-charcoal-400 text-white' : action.className
+                                  }`}
+                                >
+                                  {isProcessing ? (
+                                    <>
+                                      <Loader2 className="w-3 h-3 animate-spin" />
+                                      <span>…</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <span>{action.label}</span>
+                                      <ArrowRight className="w-3 h-3" />
+                                    </>
+                                  )}
+                                </button>
+                              )
+                            })()}
 
                             <button
                               onClick={() => handleViewDetails(order)}

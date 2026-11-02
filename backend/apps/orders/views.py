@@ -53,7 +53,8 @@ def orders_collection_view(request):
 @permission_classes([AllowAny])
 def customer_order_tracking_view(request, pk):
     access_token = request.query_params.get("accessToken", "").strip()
-    order = Order.objects.filter(id=pk).first()
+    from django.db.models import Q
+    order = Order.objects.filter(Q(id=pk) | Q(order_number=pk)).prefetch_related("order_items").first()
     if not order:
         raise NotFound({"error": {"code": "NOT_FOUND", "message": "Order not found"}})
 
@@ -71,39 +72,66 @@ def customer_order_tracking_view(request, pk):
 
     return Response(format_order_for_customer(order))
 
-@api_view(["GET"])
+@api_view(["GET", "PATCH", "PUT"])
 @permission_classes([IsStaffOrDashboardAccess])
 def staff_order_detail_view(request, pk):
-    restaurant = get_restaurant_by_slug()
-    order = Order.objects.filter(restaurant=restaurant, id=pk).first()
+    if request.method in ["PATCH", "PUT"]:
+        return staff_order_status_view(request, pk)
+
+    slug = request.query_params.get("restaurantSlug") or request.data.get("restaurantSlug") or "olive-and-ember"
+    restaurant = get_restaurant_by_slug(slug)
+    from django.db.models import Q
+    order = Order.objects.filter(
+        Q(id=pk) | Q(order_number=pk),
+        restaurant=restaurant
+    ).prefetch_related("order_items").first()
     if not order:
-        raise NotFound({"error": {"code": "NOT_FOUND", "message": "Order not found"}})
+        raise NotFound({"error": {"code": "NOT_FOUND", "message": f"Order '{pk}' not found for {restaurant.name}"}})
     return Response(format_order_for_dashboard(order))
 
-@api_view(["PATCH"])
+@api_view(["PATCH", "PUT", "POST"])
 @permission_classes([IsStaffOrDashboardAccess])
 def staff_order_status_view(request, pk):
-    restaurant = get_restaurant_by_slug()
-    order = Order.objects.filter(restaurant=restaurant, id=pk).first()
+    slug = request.query_params.get("restaurantSlug") or request.data.get("restaurantSlug") or "olive-and-ember"
+    restaurant = get_restaurant_by_slug(slug)
+    from django.db.models import Q
+    order = Order.objects.filter(
+        Q(id=pk) | Q(order_number=pk),
+        restaurant=restaurant
+    ).prefetch_related("order_items").first()
     if not order:
-        raise NotFound({"error": {"code": "NOT_FOUND", "message": "Order not found"}})
+        raise NotFound({"error": {"code": "NOT_FOUND", "message": f"Order '{pk}' not found for {restaurant.name}"}})
 
-    new_status = request.data.get("status")
+    new_status = request.data.get("status") or request.data.get("orderStatus")
     if not new_status:
         raise ValidationError({"error": {"code": "VALIDATION_ERROR", "message": "Status is required"}})
 
-    # Mapping if frontend passes customer status
+    # Mapping frontend status strings to internal canonical statuses
     status_map_rev = {
+        "new": "pending",
+        "pending": "pending",
         "accepted": "confirmed",
+        "accept": "confirmed",
+        "confirmed": "confirmed",
         "preparing": "preparing",
         "ready": "ready",
         "served": "served",
         "completed": "completed",
+        "complete": "completed",
         "cancelled": "cancelled",
+        "cancel": "cancelled",
     }
-    mapped_status = status_map_rev.get(new_status.lower(), new_status.lower())
+    raw_status = str(new_status).strip().lower()
+    if raw_status not in status_map_rev:
+        raise ValidationError({
+            "error": {
+                "code": "VALIDATION_ERROR",
+                "message": f"Invalid status '{new_status}'. Allowed values: New, Accepted, Preparing, Ready, Served, Completed, Cancelled"
+            }
+        })
+    mapped_status = status_map_rev[raw_status]
 
-    reason = request.data.get("reason")
+    reason = request.data.get("reason") or request.data.get("cancellationReason")
     try:
         updated_order = update_order_status_service(order, mapped_status, reason)
     except ValidationError as e:

@@ -83,8 +83,11 @@ urlpatterns = [
     path("api/orders", order_views.orders_collection_view, name="orders-collection"),
     path("api/orders/", order_views.orders_collection_view, name="orders-collection-slash"),
     path("api/orders/<str:pk>", order_views.staff_order_detail_view, name="staff-order-detail"),
+    path("api/orders/<str:pk>/", order_views.staff_order_detail_view),
     path("api/orders/<str:pk>/tracking", order_views.customer_order_tracking_view, name="customer-order-tracking"),
+    path("api/orders/<str:pk>/tracking/", order_views.customer_order_tracking_view),
     path("api/orders/<str:pk>/status", order_views.staff_order_status_view, name="staff-order-status"),
+    path("api/orders/<str:pk>/status/", order_views.staff_order_status_view),
 
     # Service Requests (Waiter calls & bill requests)
     path("api/service-requests", service_views.service_requests_view, name="service-requests"),
@@ -135,8 +138,11 @@ urlpatterns = [
     path("orders", order_views.orders_collection_view),
     path("orders/", order_views.orders_collection_view),
     path("orders/<str:pk>", order_views.staff_order_detail_view),
+    path("orders/<str:pk>/", order_views.staff_order_detail_view),
     path("orders/<str:pk>/tracking", order_views.customer_order_tracking_view),
+    path("orders/<str:pk>/tracking/", order_views.customer_order_tracking_view),
     path("orders/<str:pk>/status", order_views.staff_order_status_view),
+    path("orders/<str:pk>/status/", order_views.staff_order_status_view),
     path("service-requests", service_views.service_requests_view),
     path("service-requests/<str:pk>", service_views.service_request_detail_view),
     path("payments", payment_views.payments_view),

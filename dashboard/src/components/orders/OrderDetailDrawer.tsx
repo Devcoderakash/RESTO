@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { Drawer } from '../ui/Drawer'
 import { Button } from '../ui/Button'
 import { Order, OrderStatus } from '../../types'
@@ -46,6 +46,7 @@ export const OrderDetailDrawer: React.FC<OrderDetailDrawerProps> = ({
   onPrintClick,
   onTogglePayment,
 }) => {
+  const [isAdvancing, setIsAdvancing] = useState(false)
   if (!order) return null
 
   const currentIdx = statusOrder.indexOf(order.orderStatus)
@@ -83,13 +84,23 @@ export const OrderDetailDrawer: React.FC<OrderDetailDrawerProps> = ({
               <Button
                 variant="primary"
                 size="sm"
+                disabled={isAdvancing}
+                isLoading={isAdvancing}
                 rightIcon={<ArrowRight className="w-3.5 h-3.5" />}
                 onClick={async () => {
-                  const updated = await onUpdateStatus(order.id, nextStatus)
-                  if (updated !== false) toast.success(`Order ${order.id} moved to "${nextStatus}"`)
+                  if (isAdvancing) return
+                  setIsAdvancing(true)
+                  try {
+                    const updated = await onUpdateStatus(order.id, nextStatus)
+                    if (updated !== false) {
+                      toast.success(`Order #${order.orderNumber || order.id} moved to "${nextStatus}"`)
+                    }
+                  } finally {
+                    setIsAdvancing(false)
+                  }
                 }}
               >
-                Advance to {nextStatus}
+                {nextStatus === 'Accepted' ? 'Accept Order' : `Advance to ${nextStatus}`}
               </Button>
             )}
           </div>
