@@ -122,3 +122,13 @@ SELECT 'staff', COUNT(*) FROM public.staff
 UNION ALL
 SELECT 'realtime_events', COUNT(*) FROM public.realtime_events;
 
+-- 10. Verify Sequence Current Values vs Table Max IDs
+SELECT
+    sequencename,
+    last_value,
+    start_value
+FROM pg_sequences
+WHERE schemaname = 'public'
+ORDER BY sequencename;
+
+

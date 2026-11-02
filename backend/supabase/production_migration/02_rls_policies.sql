@@ -43,7 +43,10 @@ BEGIN
 END $$;
 
 -- =====================================================================
--- 3. PUBLIC ANONYMOUS & AUTHENTICATED READ POLICIES
+-- 3. PUBLIC READ POLICIES (Active Catalog Entities Only)
+-- Public clients can read active restaurant info, visible categories,
+-- available menu items, and table metadata.
+-- All mutations (orders, payments, requests) MUST go through Django API.
 -- =====================================================================
 
 -- Restaurants: Public can view active restaurants
@@ -70,52 +73,54 @@ CREATE POLICY public_read_menu_items ON public.menu_items
     FOR SELECT TO anon, authenticated
     USING (restaurant_id IN (SELECT id FROM public.restaurants WHERE is_active = true));
 
--- Orders: Public can create orders
+-- =====================================================================
+-- 4. RESTRICTED OPERATIONAL POLICIES
+-- Orders, Order Items, Payments, Service Requests, Staff & Events
+-- Direct PostgREST access is strictly blocked for anonymous clients.
+-- All operational flows are mediated by Django DRF with server-side validation.
+-- =====================================================================
+
+-- Orders: Locked to backend service_role (No public direct PostgREST access)
 DROP POLICY IF EXISTS public_create_orders ON public.orders;
-CREATE POLICY public_create_orders ON public.orders
-    FOR INSERT TO anon, authenticated
-    WITH CHECK (restaurant_id IN (SELECT id FROM public.restaurants WHERE is_active = true));
-
--- Orders: Public can only view orders with matching tracking token (BOLA/IDOR protection)
 DROP POLICY IF EXISTS public_read_tracked_orders ON public.orders;
-CREATE POLICY public_read_tracked_orders ON public.orders
-    FOR SELECT TO anon, authenticated
-    USING (true);
+CREATE POLICY orders_service_role_only ON public.orders
+    FOR ALL TO service_role
+    USING (true)
+    WITH CHECK (true);
 
--- Order Items: Public can insert items during order placement
+-- Order Items: Locked to backend service_role
 DROP POLICY IF EXISTS public_create_order_items ON public.order_items;
-CREATE POLICY public_create_order_items ON public.order_items
-    FOR INSERT TO anon, authenticated
-    WITH CHECK (order_id IN (SELECT id FROM public.orders));
-
--- Order Items: Public can view items belonging to orders
 DROP POLICY IF EXISTS public_read_order_items ON public.order_items;
-CREATE POLICY public_read_order_items ON public.order_items
-    FOR SELECT TO anon, authenticated
-    USING (true);
+CREATE POLICY order_items_service_role_only ON public.order_items
+    FOR ALL TO service_role
+    USING (true)
+    WITH CHECK (true);
 
--- Service Requests: Public can insert waiter calls and bill requests
+-- Service Requests: Locked to backend service_role
 DROP POLICY IF EXISTS public_create_service_requests ON public.service_requests;
-CREATE POLICY public_create_service_requests ON public.service_requests
-    FOR INSERT TO anon, authenticated
-    WITH CHECK (restaurant_id IN (SELECT id FROM public.restaurants WHERE is_active = true));
-
--- Service Requests: Read access restricted to staff / service_role
 DROP POLICY IF EXISTS public_read_service_requests ON public.service_requests;
-CREATE POLICY public_read_service_requests ON public.service_requests
-    FOR SELECT TO authenticated
-    USING (true);
+CREATE POLICY service_requests_service_role_only ON public.service_requests
+    FOR ALL TO service_role
+    USING (true)
+    WITH CHECK (true);
 
--- Payments: Financial records strictly locked to service_role / trusted backend
--- (No public anon SELECT or INSERT)
+-- Payments: Locked to backend service_role
 DROP POLICY IF EXISTS staff_read_payments ON public.payments;
-CREATE POLICY staff_read_payments ON public.payments
-    FOR SELECT TO authenticated
-    USING (true);
+CREATE POLICY payments_service_role_only ON public.payments
+    FOR ALL TO service_role
+    USING (true)
+    WITH CHECK (true);
 
--- Staff: Staff records strictly locked to authenticated staff
+-- Staff: Locked to backend service_role
 DROP POLICY IF EXISTS staff_read_staff ON public.staff;
-CREATE POLICY staff_read_staff ON public.staff
-    FOR SELECT TO authenticated
-    USING (is_active = true);
+CREATE POLICY staff_service_role_only ON public.staff
+    FOR ALL TO service_role
+    USING (true)
+    WITH CHECK (true);
+
+-- Realtime Events: Locked to backend service_role
+CREATE POLICY realtime_events_service_role_only ON public.realtime_events
+    FOR ALL TO service_role
+    USING (true)
+    WITH CHECK (true);
 

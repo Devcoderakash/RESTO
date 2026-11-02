@@ -4,6 +4,6 @@ set -o errexit
 
 pip install --upgrade pip
 pip install -r requirements.txt
-python manage.py migrate --no-input
+python manage.py migrate --fake-initial --no-input
 python seed_data.py
 

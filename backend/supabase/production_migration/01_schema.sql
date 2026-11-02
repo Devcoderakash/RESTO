@@ -128,7 +128,7 @@ CREATE TABLE IF NOT EXISTS public.orders (
 -- Relational line items belonging to an order
 -- =====================================================================
 CREATE TABLE IF NOT EXISTS public.order_items (
-    id VARCHAR(64) PRIMARY KEY,
+    id VARCHAR(100) PRIMARY KEY,
     order_id VARCHAR(64) NOT NULL REFERENCES public.orders(id) ON DELETE CASCADE,
     menu_item_id VARCHAR(64) NOT NULL,
     item_name VARCHAR(255) NOT NULL,

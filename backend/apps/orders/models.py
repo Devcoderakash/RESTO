@@ -67,7 +67,7 @@ class Order(models.Model):
         return f"Order {self.order_number} - Table {self.table_number} ({self.status})"
 
 class OrderItem(models.Model):
-    id = models.CharField(max_length=64, primary_key=True, default=uuid.uuid4)
+    id = models.CharField(max_length=100, primary_key=True, default=uuid.uuid4)
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="order_items")
     menu_item_id = models.CharField(max_length=64)
     item_name = models.CharField(max_length=255)

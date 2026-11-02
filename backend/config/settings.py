@@ -72,13 +72,21 @@ IS_REAL_POSTGRES = (
 ) and not ("example-project" in DATABASE_URL or "placeholder" in DATABASE_URL)
 
 if IS_REAL_POSTGRES:
-    DATABASES = {
-        "default": dj_database_url.config(
-            default=DATABASE_URL,
-            conn_max_age=600,
-            ssl_require=os.getenv("DB_SSL_REQUIRE", "True").lower() in ("true", "1"),
-        )
-    }
+    # Supabase Connection Pooler (Port 6543 vs 5432) Compatibility:
+    # When connecting via Supavisor Transaction Pooler (port 6543), conn_max_age must be 0
+    # and server-side cursors disabled to allow safe transaction multiplexing.
+    is_transaction_pooler = ":6543" in DATABASE_URL
+    default_conn_max_age = 0 if is_transaction_pooler else int(os.getenv("DB_CONN_MAX_AGE", "600"))
+
+    db_config = dj_database_url.config(
+        default=DATABASE_URL,
+        conn_max_age=default_conn_max_age,
+        ssl_require=os.getenv("DB_SSL_REQUIRE", "True").lower() in ("true", "1"),
+    )
+    if is_transaction_pooler:
+        db_config.setdefault("OPTIONS", {})["disable_server_side_cursors"] = True
+
+    DATABASES = {"default": db_config}
 else:
     if not DEBUG:
         from django.core.exceptions import ImproperlyConfigured

@@ -11,6 +11,11 @@ from apps.menu.models import Category, MenuItem
 from apps.dashboard.models import StaffMember
 
 def seed():
+    # Production / Migration safety guard: never overwrite or double-seed an already populated database
+    if Restaurant.objects.filter(slug="olive-and-ember").exists():
+        print("[SAFETY GUARD] Restaurant 'olive-and-ember' already exists. Skipping seed to preserve operational database.")
+        return
+
     print("Seeding RESTO database...")
     restaurant, _ = Restaurant.objects.update_or_create(
         slug="olive-and-ember",
