@@ -17,12 +17,26 @@ from config.supabase import check_supabase_health
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def health_check(request):
+    import os
     from django.db import connection
     sb_health = check_supabase_health()
+
+    # Safe diagnostics without exposing any password or host
+    found_var = None
+    for var in ["DATABASE_URL", "SUPABASE_DATABASE_URL", "POSTGRES_URL", "POSTGRESQL_URL", "DB_URL"]:
+        if os.getenv(var):
+            found_var = var
+            break
+
+    db_raw = (os.getenv(found_var) if found_var else "").strip().strip("'\"")
+    db_scheme = db_raw.split("://")[0] + "://" if "://" in db_raw else ("present" if db_raw else "missing")
+
     return Response({
         "status": "ok",
         "database_vendor": connection.vendor,
         "database_configured": bool(connection.vendor == "postgresql"),
+        "database_env_var": found_var or "NOT_FOUND",
+        "database_env_scheme": db_scheme,
         "supabase": sb_health.get("status", "unknown"),
         "storage": sb_health.get("storage", "unknown"),
     })

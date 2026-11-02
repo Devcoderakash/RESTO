@@ -66,7 +66,17 @@ WSGI_APPLICATION = "config.wsgi.application"
 ASGI_APPLICATION = "config.asgi.application"
 
 # Database Configuration (Supabase PostgreSQL as Single Source of Truth)
-DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
+# Check standard and common alias environment variable names, strip quotes and whitespace
+RAW_DATABASE_URL = (
+    os.getenv("DATABASE_URL")
+    or os.getenv("SUPABASE_DATABASE_URL")
+    or os.getenv("POSTGRES_URL")
+    or os.getenv("POSTGRESQL_URL")
+    or os.getenv("DB_URL")
+    or ""
+).strip().strip("'\"")
+
+DATABASE_URL = RAW_DATABASE_URL
 IS_REAL_POSTGRES = (
     DATABASE_URL.startswith("postgres://") or DATABASE_URL.startswith("postgresql://")
 ) and not ("example-project" in DATABASE_URL or "placeholder" in DATABASE_URL)
