@@ -98,9 +98,6 @@ def parse_database_url(raw_url: str, default_ssl: bool = True) -> dict:
     if default_ssl and "sslmode" not in options:
         options["sslmode"] = "require"
 
-    if is_transaction_pooler:
-        options["disable_server_side_cursors"] = True
-
     return {
         "ENGINE": "django.db.backends.postgresql",
         "NAME": dbname,
@@ -109,6 +106,7 @@ def parse_database_url(raw_url: str, default_ssl: bool = True) -> dict:
         "HOST": host,
         "PORT": int(port) if str(port).isdigit() else 5432,
         "CONN_MAX_AGE": conn_max_age,
+        "DISABLE_SERVER_SIDE_CURSORS": is_transaction_pooler,
         "OPTIONS": options,
     }
 

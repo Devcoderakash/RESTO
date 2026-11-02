@@ -33,7 +33,7 @@ class TestDatabaseUrlParsing(unittest.TestCase):
         self.assertEqual(cfg["PASSWORD"], "plainpass123")
         self.assertEqual(cfg["NAME"], "postgres")
         self.assertEqual(cfg["CONN_MAX_AGE"], 0)  # Port 6543 requires conn_max_age = 0
-        self.assertEqual(cfg["OPTIONS"]["disable_server_side_cursors"], True)
+        self.assertEqual(cfg["DISABLE_SERVER_SIDE_CURSORS"], True)
         self.assertEqual(cfg["OPTIONS"]["sslmode"], "require")
 
     def test_direct_session_url(self):
