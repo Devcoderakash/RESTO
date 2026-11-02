@@ -12,10 +12,18 @@ from apps.payments import views as payment_views
 from apps.dashboard import views as dashboard_views
 from apps.realtime import views as realtime_views
 
+from config.supabase import check_supabase_health
+
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def health_check(request):
-    return Response({"status": "ok"})
+    sb_health = check_supabase_health()
+    return Response({
+        "status": "ok",
+        "database": "supabase-postgresql",
+        "supabase": sb_health.get("status", "unknown"),
+        "storage": sb_health.get("storage", "unknown"),
+    })
 
 urlpatterns = [
     # Health checks
