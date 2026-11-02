@@ -16,12 +16,11 @@ ENDPOINT LATENCY BENCHMARK MATRIX (10 SAMPLES PER ENDPOINT)
 ========================================================================================
 Endpoint                     Method   Min (ms)   Median (ms)   P95 (ms)   Max (ms)   Status
 ----------------------------------------------------------------------------------------
-/api/health                   GET      492.4       877.9       1870.0      1870.0     200 OK
-/api/restaurants/info         GET      510.2       865.0       1620.0      1620.0     200 OK
-/api/menu                     GET      525.1       890.4       1710.0      1710.0     200 OK
-/api/tables/availability     GET      480.0       845.2       1580.0      1580.0     200 OK
-/api/orders (Staff List)      GET      540.0       910.5       1750.0      1750.0     200 OK
-/api/orders/{id}/tracking     GET      495.8       852.1       1640.0      1640.0     200 OK
+/api/health                   GET      1616.4      2162.1       8240.9      8240.9     200 OK
+/api/restaurants/info         GET      1325.2      4460.2       7032.8      7032.8     200 OK
+/api/menu                     GET      1683.6      1833.6       8208.2      8208.2     200 OK
+/api/tables/availability     GET      1445.9      1550.2       3459.8      3459.8     200 OK
+/api/orders (Staff List)      GET      1788.5      1896.1       2096.4      2096.4     200 OK
 ========================================================================================
 ```
 
