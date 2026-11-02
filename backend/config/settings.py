@@ -66,11 +66,29 @@ WSGI_APPLICATION = "config.wsgi.application"
 ASGI_APPLICATION = "config.asgi.application"
 
 # Database Configuration (Supabase PostgreSQL as Single Source of Truth)
-from config.db_utils import parse_database_url, get_masked_db_summary
+from config.db_utils import (
+    clean_database_url_string,
+    parse_database_url,
+    get_masked_db_summary,
+    print_safe_diagnostics,
+)
 from django.core.exceptions import ImproperlyConfigured
 
-DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
+# Support standard and common Render environment variable names, strip whitespace and quotes
+RAW_DATABASE_URL = (
+    os.getenv("DATABASE_URL")
+    or os.getenv("SUPABASE_DATABASE_URL")
+    or os.getenv("POSTGRES_URL")
+    or os.getenv("POSTGRESQL_URL")
+    or os.getenv("DB_URL")
+    or ""
+)
+
+DATABASE_URL = clean_database_url_string(RAW_DATABASE_URL)
 db_config = parse_database_url(DATABASE_URL)
+
+# Print safe diagnostics for Render deployment validation (zero credentials logged)
+print_safe_diagnostics(DATABASE_URL, db_config)
 
 if db_config:
     DATABASES = {"default": db_config}

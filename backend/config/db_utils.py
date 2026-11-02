@@ -8,6 +8,29 @@ import os
 import re
 import urllib.parse
 
+def clean_database_url_string(raw_url: str) -> str:
+    """
+    Cleans quotation marks, psql wrappers, brackets, and whitespace from connection strings.
+    Handles user copy-paste errors safely.
+    """
+    if not raw_url:
+        return ""
+    cleaned = raw_url.strip()
+    # Strip shell / psql command wrapper if user copied "psql postgresql://..."
+    if cleaned.lower().startswith("psql "):
+        cleaned = cleaned[5:].strip()
+
+    # Strip trailing semicolon first
+    cleaned = cleaned.rstrip(";").strip()
+
+    # Strip quotes (repeating if wrapped multiple times)
+    while (cleaned.startswith('"') and cleaned.endswith('"')) or (cleaned.startswith("'") and cleaned.endswith("'")):
+        cleaned = cleaned[1:-1].strip()
+
+    # Strip trailing semicolon again if it was inside the quotes
+    cleaned = cleaned.rstrip(";").strip()
+    return cleaned
+
 def parse_database_url(raw_url: str, default_ssl: bool = True) -> dict:
     """
     Parses and normalizes a PostgreSQL connection URL into a Django DATABASES configuration dict.
@@ -17,7 +40,9 @@ def parse_database_url(raw_url: str, default_ssl: bool = True) -> dict:
     if not raw_url:
         return None
 
-    url_str = raw_url.strip()
+    url_str = clean_database_url_string(raw_url)
+    if not url_str:
+        return None
 
     # Pattern: postgres(ql)://<username>:<password>@<host>:<port>/<dbname>?<query>
     pattern = r"^(postgres(?:ql)?):\/\/([^:]+):(.*)@([^@\/:?]+)(?::(\d+))?\/([^?]+)(?:\?(.*))?$"
@@ -43,9 +68,14 @@ def parse_database_url(raw_url: str, default_ssl: bool = True) -> dict:
         dbname = match.group(6) or "postgres"
         query = match.group(7) or ""
 
-        # Strip literal brackets if copied as [YOUR-PASSWORD]
-        if raw_password.startswith("[") and raw_password.endswith("]"):
+        # Strip literal brackets or quotes if copied as [YOUR-PASSWORD] or "YOUR-PASSWORD"
+        if (raw_password.startswith("[") and raw_password.endswith("]")) or \
+           (raw_password.startswith('"') and raw_password.endswith('"')) or \
+           (raw_password.startswith("'") and raw_password.endswith("'")):
             raw_password = raw_password[1:-1]
+
+        if raw_user.startswith("[") and raw_user.endswith("]"):
+            raw_user = raw_user[1:-1]
 
         user = urllib.parse.unquote(raw_user)
         password = urllib.parse.unquote(raw_password)
@@ -55,7 +85,7 @@ def parse_database_url(raw_url: str, default_ssl: bool = True) -> dict:
         return None
 
     # Supabase Transaction Pooler check (Port 6543)
-    is_transaction_pooler = (port == "6543" or ":6543" in url_str)
+    is_transaction_pooler = (str(port) == "6543" or ":6543" in url_str)
     conn_max_age = 0 if is_transaction_pooler else int(os.getenv("DB_CONN_MAX_AGE", "600"))
 
     # Parse query params for SSL mode
@@ -89,7 +119,7 @@ def sanitize_postgres_url(raw_url: str) -> str:
     """
     if not raw_url:
         return ""
-    url_str = raw_url.strip()
+    url_str = clean_database_url_string(raw_url)
 
     pattern = r"^(postgres(?:ql)?):\/\/([^:]+):(.*)@([^@\/:?]+)(?::(\d+))?\/([^?]+)(?:\?(.*))?$"
     match = re.match(pattern, url_str)
@@ -103,8 +133,13 @@ def sanitize_postgres_url(raw_url: str) -> str:
     dbname = match.group(6) or "postgres"
     query = match.group(7) or ""
 
-    if raw_password.startswith("[") and raw_password.endswith("]"):
+    if (raw_password.startswith("[") and raw_password.endswith("]")) or \
+       (raw_password.startswith('"') and raw_password.endswith('"')) or \
+       (raw_password.startswith("'") and raw_password.endswith("'")):
         raw_password = raw_password[1:-1]
+
+    if raw_user.startswith("[") and raw_user.endswith("]"):
+        raw_user = raw_user[1:-1]
 
     clean_user = urllib.parse.unquote(raw_user)
     clean_password = urllib.parse.unquote(raw_password)
@@ -116,6 +151,60 @@ def sanitize_postgres_url(raw_url: str) -> str:
     if query:
         normalized += f"?{query}"
     return normalized
+
+def get_safe_diagnostics(raw_url: str, db_config: dict) -> dict:
+    """
+    Extracts configuration diagnostics without leaking username, password, full URI, or query parameters.
+    """
+    cleaned = clean_database_url_string(raw_url)
+    has_url = bool(cleaned)
+    parse_success = bool(db_config is not None and isinstance(db_config, dict))
+
+    if has_url:
+        if "://" in cleaned:
+            scheme = cleaned.split("://")[0].lower()
+        else:
+            scheme = "unknown"
+    else:
+        scheme = "none"
+
+    host = db_config.get("HOST", "") if parse_success else ""
+    is_host_valid = bool(
+        host and "." in host and " " not in host and "/" not in host and ":" not in host and not host.startswith(".") and not host.endswith(".")
+    )
+
+    port = db_config.get("PORT", None) if parse_success else None
+    try:
+        port_num = int(port)
+        is_port_valid = (1 <= port_num <= 65535)
+    except (TypeError, ValueError):
+        is_port_valid = False
+
+    backend_selected = bool(parse_success and db_config.get("ENGINE") == "django.db.backends.postgresql")
+
+    return {
+        "database_url_exists": has_url,
+        "uri_parsing_succeeds": parse_success,
+        "parsed_scheme": scheme,
+        "hostname_validity": "VALID" if is_host_valid else "INVALID",
+        "port_validity": "VALID" if is_port_valid else "INVALID",
+        "postgresql_backend_selected": backend_selected,
+    }
+
+def print_safe_diagnostics(raw_url: str, db_config: dict) -> None:
+    """
+    Prints strictly formatted safe diagnostics required by Render deployment validation.
+    Guarantees 0% credential leakage.
+    """
+    diag = get_safe_diagnostics(raw_url, db_config)
+    print("=== DATABASE CONFIGURATION DIAGNOSTICS ===")
+    print(f"DATABASE_URL exists        : {diag['database_url_exists']}")
+    print(f"URI parsing succeeds       : {diag['uri_parsing_succeeds']}")
+    print(f"Parsed scheme              : {diag['parsed_scheme']}")
+    print(f"Hostname validity          : {diag['hostname_validity']}")
+    print(f"Port validity              : {diag['port_validity']}")
+    print(f"PostgreSQL backend selected: {diag['postgresql_backend_selected']}")
+    print("===========================================")
 
 def get_masked_db_summary(db_config: dict) -> str:
     """

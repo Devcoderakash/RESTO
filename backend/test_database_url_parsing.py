@@ -12,7 +12,13 @@ from django.core.exceptions import ImproperlyConfigured
 # Ensure backend root is in python path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from config.db_utils import parse_database_url, sanitize_postgres_url, get_masked_db_summary
+from config.db_utils import (
+    clean_database_url_string,
+    parse_database_url,
+    sanitize_postgres_url,
+    get_masked_db_summary,
+    get_safe_diagnostics,
+)
 
 class TestDatabaseUrlParsing(unittest.TestCase):
 
@@ -45,6 +51,26 @@ class TestDatabaseUrlParsing(unittest.TestCase):
         self.assertIsNotNone(cfg)
         self.assertEqual(cfg["PASSWORD"], "SecretPass123")  # Brackets stripped safely
 
+    def test_quoted_urls(self):
+        # Users often paste with surrounding double or single quotes
+        url_double = '"postgresql://postgres.zmpthsiiouukjjyrbpnz:QuotedPass123@aws-0-ap-south-1.pooler.supabase.com:6543/postgres"'
+        cfg_double = parse_database_url(url_double)
+        self.assertIsNotNone(cfg_double)
+        self.assertEqual(cfg_double["PASSWORD"], "QuotedPass123")
+
+        url_single = "'postgresql://postgres.zmpthsiiouukjjyrbpnz:SinglePass123@aws-0-ap-south-1.pooler.supabase.com:6543/postgres'"
+        cfg_single = parse_database_url(url_single)
+        self.assertIsNotNone(cfg_single)
+        self.assertEqual(cfg_single["PASSWORD"], "SinglePass123")
+
+    def test_psql_wrapper_string(self):
+        # User pasted entire psql command from Supabase
+        url = 'psql "postgresql://postgres.zmpthsiiouukjjyrbpnz:CliPass123@aws-0-ap-south-1.pooler.supabase.com:6543/postgres";'
+        cfg = parse_database_url(url)
+        self.assertIsNotNone(cfg)
+        self.assertEqual(cfg["PASSWORD"], "CliPass123")
+        self.assertEqual(cfg["HOST"], "aws-0-ap-south-1.pooler.supabase.com")
+
     def test_special_characters_in_password(self):
         # Raw password containing @, #, $, %, &, +, /, =, ?
         url = "postgresql://postgres.zmpthsiiouukjjyrbpnz:p@ss#word$123%&+/=?@aws-0-ap-south-1.pooler.supabase.com:6543/postgres"
@@ -74,6 +100,25 @@ class TestDatabaseUrlParsing(unittest.TestCase):
         self.assertNotIn("SuperSecretPassword123!", summary)
         self.assertIn("postgresql", summary)
         self.assertIn("aws-0-ap-south-1.pooler.supabase.com:6543", summary)
+
+    def test_safe_diagnostics_spec(self):
+        # Test required 6 diagnostic fields
+        secret_pass = "UltraSecret#2026!Pass"
+        url = f"postgresql://postgres.zmpthsiiouukjjyrbpnz:{secret_pass}@aws-0-ap-south-1.pooler.supabase.com:6543/postgres"
+        cfg = parse_database_url(url)
+        diag = get_safe_diagnostics(url, cfg)
+
+        self.assertTrue(diag["database_url_exists"])
+        self.assertTrue(diag["uri_parsing_succeeds"])
+        self.assertEqual(diag["parsed_scheme"], "postgresql")
+        self.assertEqual(diag["hostname_validity"], "VALID")
+        self.assertEqual(diag["port_validity"], "VALID")
+        self.assertTrue(diag["postgresql_backend_selected"])
+
+        # Check diagnostics string output has NO secrets
+        diag_str = str(diag)
+        self.assertNotIn(secret_pass, diag_str)
+        self.assertNotIn("postgres.zmpthsiiouukjjyrbpnz", diag_str)
 
 if __name__ == "__main__":
     unittest.main()

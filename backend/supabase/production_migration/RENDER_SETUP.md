@@ -46,3 +46,4 @@ When deploying on Render:
 4. `python manage.py migrate --fake-initial --no-input` registers migrations against existing Supabase tables.
 5. `python seed_data.py` safely verifies restaurant operational state without overwriting migrated data.
 6. Gunicorn boots `config.wsgi:application` bound to Supabase PostgreSQL.
+
