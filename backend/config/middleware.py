@@ -1,15 +1,25 @@
 """
-Enterprise Security Headers Middleware for RESTO.
+Enterprise Security Headers & Telemetry Middleware for RESTO.
 Enforces defense-in-depth HTTP response headers against XSS, clickjacking,
-MIME sniffing, unauthorized iframe embedding, and information leakage.
+MIME sniffing, unauthorized iframe embedding, and information leakage,
+while providing high-resolution request duration and readiness telemetry.
 """
+
+import time
 
 class SecurityHeadersMiddleware:
     def __init__(self, get_response):
         self.get_response = get_response
 
     def __call__(self, request):
+        start_time = time.perf_counter()
         response = self.get_response(request)
+        duration_ms = (time.perf_counter() - start_time) * 1000
+
+        # Telemetry: Request duration and readiness metrics
+        response["X-Response-Time"] = f"{duration_ms:.2f}ms"
+        response["Server-Timing"] = f"app;dur={duration_ms:.2f}"
+        response["X-Backend-Readiness"] = "ready"
 
         # 1. Prevent MIME-type sniffing
         response["X-Content-Type-Options"] = "nosniff"

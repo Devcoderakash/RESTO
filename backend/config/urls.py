@@ -12,28 +12,86 @@ from apps.payments import views as payment_views
 from apps.dashboard import views as dashboard_views
 from apps.realtime import views as realtime_views
 
+import time
+import re
+from datetime import datetime, timezone
+from django.db import connection
 from config.supabase import check_supabase_health
 
 @api_view(["GET"])
 @permission_classes([AllowAny])
+def liveness_check(request):
+    """
+    Lightweight Liveness Probe.
+    Returns HTTP 200 immediately if Django/Gunicorn process is alive and receiving traffic.
+    Zero database queries, zero external network calls.
+    """
+    return Response({
+        "status": "alive",
+        "service": "resto-backend",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }, status=200)
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def readiness_check(request):
+    """
+    Traffic Readiness Probe.
+    Checks PostgreSQL connectivity with a lightweight ping (SELECT 1;).
+    Returns HTTP 200 if ready to serve, or HTTP 503 if database connection fails.
+    """
+    db_ok = False
+    db_latency_ms = 0.0
+    db_error = None
+
+    t0 = time.perf_counter()
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT 1;")
+            cursor.fetchone()
+            db_ok = True
+        db_latency_ms = round((time.perf_counter() - t0) * 1000, 2)
+    except Exception as e:
+        db_latency_ms = round((time.perf_counter() - t0) * 1000, 2)
+        raw_err = str(e).split("\n")[0]
+        clean_err = re.sub(r"password=[^\s]+", "password=[REDACTED]", raw_err)
+        db_error = f"{type(e).__name__}: {clean_err}"
+
+    status_code = 200 if db_ok else 503
+    return Response({
+        "status": "ready" if db_ok else "not_ready",
+        "database": "connected" if db_ok else "unavailable",
+        "database_vendor": connection.vendor,
+        "db_latency_ms": db_latency_ms,
+        "database_error": db_error,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }, status=status_code)
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
 def health_check(request):
-    import re
-    from django.db import connection
+    """
+    Diagnostic & Backward-Compatible Health Check.
+    Combines application status, PostgreSQL connectivity, and Supabase service status.
+    """
     sb_health = check_supabase_health()
 
     db_ok = False
     db_records = 0
+    db_latency_ms = 0.0
     db_error = None
 
+    t0 = time.perf_counter()
     try:
         with connection.cursor() as cursor:
             cursor.execute("SELECT COUNT(*) FROM restaurants;")
             row = cursor.fetchone()
             db_records = row[0] if row else 0
             db_ok = True
+        db_latency_ms = round((time.perf_counter() - t0) * 1000, 2)
     except Exception as e:
+        db_latency_ms = round((time.perf_counter() - t0) * 1000, 2)
         raw_err = str(e).split("\n")[0]
-        # Mask out any password pattern in error string
         clean_err = re.sub(r"password=[^\s]+", "password=[REDACTED]", raw_err)
         db_error = f"{type(e).__name__}: {clean_err}"
 
@@ -43,15 +101,29 @@ def health_check(request):
         "database_configured": bool(connection.vendor == "postgresql"),
         "database_connected": db_ok,
         "database_records": db_records,
+        "db_latency_ms": db_latency_ms,
         "database_error": db_error,
         "supabase": sb_health.get("status", "unknown"),
         "storage": sb_health.get("storage", "unknown"),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
     })
 
 urlpatterns = [
-    # Health checks
+    # Health, Liveness and Readiness Probes
+    path("health/live", liveness_check, name="health-live"),
+    path("health/live/", liveness_check),
+    path("api/health/live", liveness_check, name="api-health-live"),
+    path("api/health/live/", liveness_check),
+
+    path("health/ready", readiness_check, name="health-ready"),
+    path("health/ready/", readiness_check),
+    path("api/health/ready", readiness_check, name="api-health-ready"),
+    path("api/health/ready/", readiness_check),
+
     path("health", health_check, name="health"),
+    path("health/", health_check),
     path("api/health", health_check, name="api-health"),
+    path("api/health/", health_check),
 
     # Restaurants
     path("api/restaurants", restaurant_views.restaurant_list, name="restaurant-list"),

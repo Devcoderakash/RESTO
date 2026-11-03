@@ -5,12 +5,14 @@ import { TopNavbar } from './TopNavbar'
 import { NotificationCenter } from './NotificationCenter'
 import { Toaster } from 'sonner'
 import { useDashboardDataStore } from '../../store/useDashboardDataStore'
+import { useBackendStatusStore } from '../../store/useBackendStatusStore'
 import { Button } from '../ui/Button'
 
 export const Layout: React.FC = () => {
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [isMobileOpen, setIsMobileOpen] = useState(false)
-  const { isLoading, hasLoaded, error, loadDashboard } = useDashboardDataStore()
+  const { isLoading, hasLoaded, loadDashboard } = useDashboardDataStore()
+  const { status } = useBackendStatusStore()
 
   return (
     <div className="min-h-screen bg-canvas text-charcoal flex flex-col md:flex-row antialiased">
@@ -42,25 +44,37 @@ export const Layout: React.FC = () => {
         <TopNavbar onMobileMenuToggle={() => setIsMobileOpen(true)} />
 
         <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-[1600px] w-full mx-auto overflow-x-hidden">
-          {!hasLoaded && isLoading && (
-            <div className="mb-5 rounded-xl border border-beige bg-white px-4 py-3 text-sm text-charcoal-muted">
-              Loading restaurant data…
+          {!hasLoaded && isLoading && status === 'Connecting' && (
+            <div className="mb-5 rounded-xl border border-beige bg-white px-4 py-3 text-sm text-charcoal-muted flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+              <span>Connecting to restaurant backend…</span>
             </div>
           )}
-          {error && (
-            <div className={`mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3 text-sm ${
-              error.includes('starting up') || error.includes('please wait')
-                ? 'border-amber-200 bg-amber-50 text-amber-800'
-                : 'border-rose-200 bg-rose-50 text-rose-800'
-            }`}>
-              <span>{error.includes('starting up') || error.includes('please wait')
-                ? '⏳ Server is waking up — this can take up to 30 seconds on free hosting...'
-                : `Dashboard API error: ${error}`}</span>
+
+          {status === 'Server Waking Up' && (
+            <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                <span>⏳ Server Waking Up — Backend is starting from sleep mode. Safe requests will resume automatically once ready.</span>
+              </div>
               <Button variant="outline" size="sm" onClick={() => void loadDashboard()}>
-                {error.includes('starting up') || error.includes('please wait') ? 'Retry Now' : 'Retry'}
+                Check Readiness
               </Button>
             </div>
           )}
+
+          {status === 'Temporarily Unavailable' && (
+            <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-rose-500" />
+                <span>⚠️ Temporarily Unavailable — Backend or database is currently unreachable. Existing orders and tables remain preserved.</span>
+              </div>
+              <Button variant="outline" size="sm" onClick={() => void loadDashboard()}>
+                Reconnect
+              </Button>
+            </div>
+          )}
+
           <Outlet />
         </main>
       </div>

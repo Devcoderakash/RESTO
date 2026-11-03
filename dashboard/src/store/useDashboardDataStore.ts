@@ -6,6 +6,7 @@ import { useRestaurantStore } from './useRestaurantStore'
 import { useTableStore } from './useTableStore'
 import { useWaiterRequestStore } from './useWaiterRequestStore'
 import { usePaymentStore } from './usePaymentStore'
+import { useBackendStatusStore } from './useBackendStatusStore'
 
 interface DashboardDataState {
   isLoading: boolean
@@ -72,12 +73,14 @@ export const useDashboardDataStore = create<DashboardDataState>((set) => ({
   loadDashboard: async () => {
     set({ isLoading: true })
 
-    // Step 1: Wake-up ping — hit /health first to boot cold Render instance
+    // Step 1: Lightweight readiness check to determine server state
     try {
-      const healthUrl = `${(import.meta.env.VITE_API_URL || 'https://resto-vc53.onrender.com/api').replace(/\/+$/, '').replace(/\/api$/, '')}/api/health`
-      await fetch(healthUrl, { method: 'GET', headers: { Accept: 'application/json' } }).catch(() => {})
+      const readyRes = await dashboardApi.checkReadiness().catch(() => null)
+      if (readyRes?.status === 'ready') {
+        useBackendStatusStore.getState().recordSuccess(readyRes.db_latency_ms)
+      }
     } catch {
-      // Ignore — the retry in request() will handle cold starts
+      // Handled inside api.ts and useBackendStatusStore
     }
 
     const [restaurantResult, menuResult, liveErrors] = await Promise.all([
@@ -131,39 +134,20 @@ export const useDashboardDataStore = create<DashboardDataState>((set) => ({
       useMenuStore.getState().setMenu(menuResult.data.items, menuResult.data.categories)
     } else errors.push(`Menu: ${getErrorMessage(menuResult.error)}`)
 
-    // If every single data source failed, auto-retry once after 5s (cold-start recovery)
-    const totalSources = 2 + 6 // restaurant + menu + 6 live data sources
-    if (errors.length >= totalSources) {
-      set({ isLoading: true, error: 'Server is starting up — retrying automatically...' })
-      await new Promise((resolve) => setTimeout(resolve, 5000))
-      const retryErrors = await loadLiveData()
-      const retryRestaurant = await dashboardApi.getRestaurant().then((data) => ({ data })).catch((error: unknown) => ({ error }))
-      const retryMenu = await dashboardApi.getMenu().then((data) => ({ data })).catch((error: unknown) => ({ error }))
-      
-      const finalErrors: string[] = [...retryErrors]
-      if ('data' in retryRestaurant) {
-        const restaurant = retryRestaurant.data?.restaurant ?? retryRestaurant.data
-        set({ restaurant })
-      } else finalErrors.push(`Restaurant: ${getErrorMessage(retryRestaurant.error)}`)
-      if ('data' in retryMenu) {
-        useMenuStore.getState().setMenu(retryMenu.data.items, retryMenu.data.categories)
-      } else finalErrors.push(`Menu: ${getErrorMessage(retryMenu.error)}`)
-
-      set({
-        isLoading: false,
-        hasLoaded: true,
-        error: finalErrors.length ? finalErrors.join(' ') : null,
-      })
-    } else {
-      set({
-        isLoading: false,
-        hasLoaded: true,
-        error: errors.length ? errors.join(' ') : null,
-      })
-    }
+    // Requirement 8 & 12: Do not wipe already-loaded state or block the dashboard if errors occur
+    set({
+      isLoading: false,
+      hasLoaded: true,
+      error: errors.length ? errors.join(' ') : null,
+    })
   },
   refreshLiveData: async () => {
     const errors = await loadLiveData()
     set({ error: errors.length ? errors.join(' ') : null })
   },
 }))
+
+// Requirement 11: Auto-resume pending safe data-fetch requests once backend becomes ready
+useBackendStatusStore.getState().registerResumeListener(() => {
+  void useDashboardDataStore.getState().refreshLiveData()
+})

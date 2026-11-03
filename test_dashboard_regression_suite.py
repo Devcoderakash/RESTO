@@ -57,13 +57,31 @@ class DashboardRegressionTester:
         print("RESTO: DASHBOARD API COMPREHENSIVE REGRESSION TEST SUITE")
         print("=" * 70)
 
-        # 1. Health check
-        print("\n--- 1. Backend & Database Health ---")
+        # 1. Health, Liveness, Readiness & Telemetry
+        print("\n--- 1. Backend & Database Health, Liveness & Readiness ---")
+        # 1a. Liveness check
+        res_live = self.client.get("/api/health/live")
+        self.log(res_live.status_code == 200, "1a. GET /api/health/live returns 200 (Liveness)")
+        self.log(res_live.json().get("status") == "alive", "1b. Liveness status is 'alive'")
+
+        # 1b. Readiness check
+        res_ready = self.client.get("/api/health/ready")
+        self.log(res_ready.status_code == 200, "1c. GET /api/health/ready returns 200 (Readiness)")
+        ready_data = res_ready.json()
+        self.log(ready_data.get("status") == "ready", "1d. Readiness status is 'ready'")
+        self.log("db_latency_ms" in ready_data, "1e. DB latency reported in readiness probe", f"{ready_data.get('db_latency_ms')}ms")
+
+        # 1c. Comprehensive Diagnostic Health
         res = self.client.get("/api/health")
-        self.log(res.status_code == 200, "1a. GET /api/health returns 200")
+        self.log(res.status_code == 200, "1f. GET /api/health returns 200")
         data = res.json()
-        self.log(data.get("status") == "ok", "1b. System status is 'ok'")
-        self.log("database_vendor" in data, "1c. Database vendor reported", f"vendor: {data.get('database_vendor')}")
+        self.log(data.get("status") == "ok", "1g. System status is 'ok'")
+        self.log("database_vendor" in data, "1h. Database vendor reported", f"vendor: {data.get('database_vendor')}")
+
+        # 1d. Telemetry Headers
+        self.log("X-Response-Time" in res.headers, "1i. Telemetry header X-Response-Time present", res.headers.get("X-Response-Time", ""))
+        self.log("Server-Timing" in res.headers, "1j. Telemetry header Server-Timing present", res.headers.get("Server-Timing", ""))
+        self.log(res.headers.get("X-Backend-Readiness") == "ready", "1k. Telemetry header X-Backend-Readiness is 'ready'")
 
         # 2. Orders Endpoint
         print("\n--- 2. Dashboard Live Orders ---")

@@ -17,6 +17,7 @@ import { SearchModal } from './SearchModal'
 import { HelpModal } from './HelpModal'
 import { toast } from 'sonner'
 import { dashboardApi } from '../../services/api'
+import { useBackendStatusStore } from '../../store/useBackendStatusStore'
 
 export interface TopNavbarProps {
   onMobileMenuToggle: () => void
@@ -29,6 +30,7 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({ onMobileMenuToggle }) => {
   const { settings } = useRestaurantStore()
   const staffEmail = dashboardApi.getSessionEmail()
   const staffName = staffEmail.split('@')[0] || 'Staff account'
+  const { status, telemetry } = useBackendStatusStore()
 
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [isHelpOpen, setIsHelpOpen] = useState(false)
@@ -92,6 +94,35 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({ onMobileMenuToggle }) => {
 
         {/* Right Action Icons & Profile */}
         <div className="flex items-center gap-2 sm:gap-3">
+          {/* Backend Readiness & Server Status Pill */}
+          <div
+            className={`hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium border transition-colors ${
+              status === 'Connected'
+                ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+                : status === 'Server Waking Up'
+                ? 'border-amber-300 bg-amber-50 text-amber-800 animate-pulse'
+                : status === 'Connecting'
+                ? 'border-blue-200 bg-blue-50 text-blue-800'
+                : 'border-rose-200 bg-rose-50 text-rose-800'
+            }`}
+          >
+            <span
+              className={`w-1.5 h-1.5 rounded-full ${
+                status === 'Connected'
+                  ? 'bg-emerald-500'
+                  : status === 'Server Waking Up'
+                  ? 'bg-amber-500'
+                  : status === 'Connecting'
+                  ? 'bg-blue-500'
+                  : 'bg-rose-500'
+              }`}
+            />
+            <span>{status}</span>
+            {status === 'Connected' && telemetry.lastLatencyMs !== undefined && (
+              <span className="text-[10px] text-emerald-600 font-mono">({Math.round(telemetry.lastLatencyMs)}ms)</span>
+            )}
+          </div>
+
           {/* Quick Staff Portals Switcher */}
           <div className="hidden md:flex items-center gap-1.5 bg-canvas p-1 rounded-xl border border-beige">
             <Link

@@ -21,11 +21,15 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+const inFlightGetRequests = new Map<string, Promise<any>>()
+
+async function executeRequest<T>(path: string, init?: RequestInit): Promise<T> {
   const method = (init?.method || 'GET').toUpperCase()
   const isReadOnly = method === 'GET' || method === 'HEAD'
+  // Safe GET requests get bounded retry with jitter; non-idempotent mutations (orders, payments) are strictly single-attempt
   const maxAttempts = isReadOnly ? 3 : 1
-  const baseDelay = 3000
+  const baseDelay = 1500
+  const maxDelay = 8000
 
   let lastError: Error | null = null
 
@@ -91,14 +95,42 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
           0
         )
       }
+
+      // Non-idempotent operations (order placement, payments) must NEVER be automatically retried
+      if (!isReadOnly) {
+        throw lastError
+      }
     }
 
+    // Bounded exponential backoff with jitter for safe GET/HEAD requests
     if (attempt < maxAttempts - 1) {
-      await new Promise((resolve) => setTimeout(resolve, baseDelay * Math.pow(2, attempt)))
+      const exponentialDelay = Math.min(baseDelay * Math.pow(2, attempt), maxDelay)
+      const jitter = Math.floor(Math.random() * 500)
+      const delay = exponentialDelay + jitter
+      await new Promise((resolve) => setTimeout(resolve, delay))
     }
   }
 
   throw lastError || new ApiError('Request failed after retries', 0)
+}
+
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const method = (init?.method || 'GET').toUpperCase()
+  // De-duplicate in-flight safe GET requests to prevent duplicate requests across components
+  if (method === 'GET' && !init?.body && !init?.signal) {
+    const key = path
+    const existing = inFlightGetRequests.get(key)
+    if (existing) {
+      return existing as Promise<T>
+    }
+    const flight = executeRequest<T>(path, init).finally(() => {
+      inFlightGetRequests.delete(key)
+    })
+    inFlightGetRequests.set(key, flight)
+    return flight
+  }
+
+  return executeRequest<T>(path, init)
 }
 
 export interface ApiTable {

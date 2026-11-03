@@ -6,6 +6,7 @@ services:
     rootDir: backend
     buildCommand: "./build.sh"
     startCommand: "gunicorn -k gthread --threads 8 --workers 2 --timeout 120 config.wsgi:application"
+    healthCheckPath: "/api/health/ready"
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.9

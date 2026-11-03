@@ -1,5 +1,6 @@
 import { Category, MenuItem, Order, OrderStatus, PaymentTransaction, StaffMember, Table } from '../types'
 import { BillRequest, TableRequest } from '../store/useWaiterRequestStore'
+import { useBackendStatusStore } from '../store/useBackendStatusStore'
 
 export const restaurantSlug = import.meta.env.VITE_RESTAURANT_SLUG || 'olive-and-ember'
 const DEFAULT_STAFF_TOKEN = 'demo-staff-token-manager'
@@ -34,18 +35,23 @@ function apiUrl(path: string): string {
   return `${apiBaseUrl}${path}`
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+const inFlightGetRequests = new Map<string, Promise<any>>()
+
+async function executeRequest<T>(path: string, init?: RequestInit): Promise<T> {
   const token = sessionStorage.getItem(AUTH_TOKEN_KEY) || DEFAULT_STAFF_TOKEN
   const method = (init?.method || 'GET').toUpperCase()
   const isReadOnly = method === 'GET' || method === 'HEAD'
+  // Safe GET requests get bounded retry with jitter; non-idempotent mutations (POST, PUT, PATCH, DELETE) are strictly single-attempt
   const maxAttempts = isReadOnly ? 3 : 1
-  const baseDelay = 3000
+  const baseDelay = 1500
+  const maxDelay = 8000
 
   let lastError: Error | null = null
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), 20000)
+    const startTime = performance.now()
 
     try {
       const response = await fetch(apiUrl(path), {
@@ -61,6 +67,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
       })
 
       clearTimeout(timeoutId)
+      const elapsedMs = Math.round(performance.now() - startTime)
 
       if (!response.ok) {
         const body = await response.text()
@@ -71,33 +78,81 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
         } catch {
           // Keep plain-text API errors readable.
         }
+
+        // HTTP 502/503/504 responses indicate Render proxy waking up or cold boot
+        const isServerStarting = response.status === 502 || response.status === 503 || response.status === 504
+        if (isServerStarting) {
+          useBackendStatusStore.getState().recordFailure(message, true)
+        }
+
         // Don't retry 4xx client errors — they won't succeed on retry
         if (response.status >= 400 && response.status < 500) {
           throw new Error(message)
         }
         lastError = new Error(message)
       } else {
+        // Successful response: record telemetry and transition status to Connected
+        const serverTimingHeader = response.headers.get('X-Response-Time')
+        const parsedLatency = serverTimingHeader ? parseFloat(serverTimingHeader) : elapsedMs
+        useBackendStatusStore.getState().recordSuccess(parsedLatency)
+
         if (response.status === 204) return undefined as T
         return response.json() as Promise<T>
       }
     } catch (err: any) {
       clearTimeout(timeoutId)
-      if (err?.name === 'AbortError') {
-        lastError = new Error('Server is starting up, please wait...')
-      } else if (err?.message?.includes('fetch') || err?.message?.includes('network') || err?.message?.includes('Failed to fetch')) {
-        lastError = new Error('Server is starting up, please wait...')
-      } else {
-        lastError = err instanceof Error ? err : new Error(String(err))
+      const isAbort = err?.name === 'AbortError'
+      const isNetwork =
+        err?.message?.includes('fetch') ||
+        err?.message?.includes('network') ||
+        err?.message?.includes('Failed to fetch') ||
+        err?.message?.includes('NetworkError')
+
+      const isColdStart = isAbort || isNetwork
+      const errorMsg = isColdStart
+        ? 'Server is starting up, please wait...'
+        : err instanceof Error
+        ? err.message
+        : String(err)
+      lastError = new Error(errorMsg)
+
+      useBackendStatusStore.getState().recordFailure(errorMsg, isColdStart)
+
+      // Strict safety: non-idempotent mutations (POST, PUT, PATCH, DELETE) fail fast without replay
+      if (!isReadOnly) {
+        throw lastError
       }
     }
 
-    // Wait before retry (exponential backoff)
+    // Bounded exponential backoff with jitter for safe GET/HEAD requests
     if (attempt < maxAttempts - 1) {
-      await new Promise((resolve) => setTimeout(resolve, baseDelay * Math.pow(2, attempt)))
+      const exponentialDelay = Math.min(baseDelay * Math.pow(2, attempt), maxDelay)
+      const jitter = Math.floor(Math.random() * 500)
+      const delay = exponentialDelay + jitter
+      await new Promise((resolve) => setTimeout(resolve, delay))
     }
   }
 
   throw lastError || new Error('Request failed after retries')
+}
+
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const method = (init?.method || 'GET').toUpperCase()
+  // De-duplicate in-flight safe GET requests to prevent duplicate requests across components
+  if (method === 'GET' && !init?.body && !init?.signal) {
+    const key = path
+    const existing = inFlightGetRequests.get(key)
+    if (existing) {
+      return existing as Promise<T>
+    }
+    const flight = executeRequest<T>(path, init).finally(() => {
+      inFlightGetRequests.delete(key)
+    })
+    inFlightGetRequests.set(key, flight)
+    return flight
+  }
+
+  return executeRequest<T>(path, init)
 }
 
 function unwrap(value: any): any {
@@ -266,6 +321,12 @@ export const dashboardApi = {
   },
   getSessionEmail(): string {
     return sessionStorage.getItem(AUTH_EMAIL_KEY) || DEFAULT_STAFF_EMAIL
+  },
+  async checkReadiness(): Promise<{ status: string; database?: string; db_latency_ms?: number }> {
+    return request<any>('/health/ready')
+  },
+  async checkLiveness(): Promise<{ status: string; service?: string }> {
+    return request<any>('/health/live')
   },
   async getRestaurant() {
     return unwrap(await request<any>('/staff/restaurant-settings'))
