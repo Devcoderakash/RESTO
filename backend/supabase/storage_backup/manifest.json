@@ -1,0 +1,27 @@
+{
+  "0ac6780a7471.png": {
+    "size": 67,
+    "sha256": "bf6e855b67618763d38f0cd8c2ab5ea9aed7b28f4475939f040e4e3ac016bedc",
+    "local_path": "backend/supabase/storage_backup/menu-items/0ac6780a7471.png"
+  },
+  "337cc181d2d2.png": {
+    "size": 67,
+    "sha256": "bf6e855b67618763d38f0cd8c2ab5ea9aed7b28f4475939f040e4e3ac016bedc",
+    "local_path": "backend/supabase/storage_backup/menu-items/337cc181d2d2.png"
+  },
+  "8189843aa34f.png": {
+    "size": 13057,
+    "sha256": "881ffbcaafc212e49addad08846a5b82761355fa20624253af3477ba33262c5c",
+    "local_path": "backend/supabase/storage_backup/menu-items/8189843aa34f.png"
+  },
+  "abdf01e3dbe8.png": {
+    "size": 67,
+    "sha256": "bf6e855b67618763d38f0cd8c2ab5ea9aed7b28f4475939f040e4e3ac016bedc",
+    "local_path": "backend/supabase/storage_backup/menu-items/abdf01e3dbe8.png"
+  },
+  "c365b49e69a4.png": {
+    "size": 67,
+    "sha256": "bf6e855b67618763d38f0cd8c2ab5ea9aed7b28f4475939f040e4e3ac016bedc",
+    "local_path": "backend/supabase/storage_backup/menu-items/c365b49e69a4.png"
+  }
+}

@@ -180,3 +180,4 @@ All DDL operations are maintained as version-controlled SQL scripts under [`back
 1. **Schema Lockdown:** All 11 tables enforce `ROW LEVEL SECURITY`.
 2. **Backend Service Role Bypass:** The trusted Node.js backend connects using PostgreSQL credentials or service-role privileges that satisfy `service_role_v2_all` policies.
 3. **Tenant Scoping:** Every query executed by `backend_node` explicitly includes `WHERE restaurant_id = $1`. Cross-tenant data leakage is architecturally impossible.
+

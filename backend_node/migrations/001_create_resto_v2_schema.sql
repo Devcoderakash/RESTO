@@ -10,3 +10,4 @@ CREATE SCHEMA IF NOT EXISTS resto_v2;
 GRANT USAGE ON SCHEMA resto_v2 TO postgres, anon, authenticated, service_role;
 ALTER DEFAULT PRIVILEGES IN SCHEMA resto_v2 GRANT ALL ON TABLES TO postgres, service_role;
 ALTER DEFAULT PRIVILEGES IN SCHEMA resto_v2 GRANT ALL ON SEQUENCES TO postgres, service_role;
+

@@ -132,3 +132,4 @@ Client payloads provide item IDs and quantities. **Client-provided prices are co
 - **Zero Secret Exposure:** The Supabase `SERVICE_ROLE_KEY`, `DATABASE_URL`, and `TRACKING_TOKEN_SECRET` exist only in secure server environment variables.
 - Neither the customer frontend nor dashboard repository contains backend service secrets.
 - Startup logger masks passwords and database connection strings.
+

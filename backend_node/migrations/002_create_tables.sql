@@ -181,3 +181,4 @@ CREATE TABLE IF NOT EXISTS resto_v2.realtime_events (
     payload JSONB NOT NULL DEFAULT '{}'::jsonb,
     created_at TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp()
 );
+

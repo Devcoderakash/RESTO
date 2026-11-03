@@ -131,3 +131,4 @@ During Phase 6:
 1. The migration script [`backend_node/scripts/migrate_v1_to_v2.ts`](file:///Users/akashlodhi/Downloads/RESTO/backend_node/scripts/) will be run with `--dry-run`.
 2. Output and verification reports will be generated and inspected.
 3. Upon approval, the migration will be committed in production with zero downtime to the running Django backend.
+

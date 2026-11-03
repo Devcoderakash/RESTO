@@ -151,3 +151,4 @@ When a client loses network connectivity (e.g. mobile device switching from Wi-F
    ```
 4. **Ordered Replay:** Missed events are returned in JSON and applied sequentially to local Zustand stores.
 5. **Deduplication:** A sliding-window `Set<string>` on the client prevents duplicate toasts or state glitches if an event was already processed.
+

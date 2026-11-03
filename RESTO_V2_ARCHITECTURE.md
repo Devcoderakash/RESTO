@@ -180,3 +180,4 @@ export class AppError extends Error {
 - Handles `SIGTERM` and `SIGINT` signals gracefully.
 - Rejects new incoming HTTP connections while allowing in-flight requests and active SSE chunk windows to finish cleanly within a 10-second timeout.
 - Closes the PostgreSQL connection pool (`pool.end()`).
+
