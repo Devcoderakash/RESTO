@@ -93,3 +93,4 @@ graph LR
 ## 6. Performance Verdict
 
 While Node.js has superior theoretical event-loop scalability for long-lived streaming sockets, the **existing Django backend currently delivers superior real-world performance, native connection pooling, query batching, and sub-200ms real-time event delivery**.
+

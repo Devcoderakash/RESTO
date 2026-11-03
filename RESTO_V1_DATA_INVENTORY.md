@@ -145,3 +145,4 @@ Historical event log capturing lifecycle state transitions:
 - All order totals match exact item unit prices + customization add-ons + 5% GST (`CGST + SGST`).
 - All foreign keys (`restaurant_id`, `category_id`, `table_id`, `order_id`) point to existing rows with zero orphan records.
 - 100% of these records have been archived in `backend/supabase/backup_v1_production_data.json`.
+

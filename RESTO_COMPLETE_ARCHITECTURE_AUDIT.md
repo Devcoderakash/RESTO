@@ -136,3 +136,4 @@ graph TB
 ## 6. Discovery Conclusion
 
 The Django backend represents a complete, actively deployed, multi-tenant restaurant engine that directly integrates with the production Supabase PostgreSQL schema. The Express backend backup is an incomplete, monolithic prototype that lacks real-time streaming, image upload facilities, test coverage, and PostgreSQL schema compatibility.
+

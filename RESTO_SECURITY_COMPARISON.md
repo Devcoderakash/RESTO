@@ -91,3 +91,4 @@ if (error || !data) {
 The Django backend demonstrates **robust production-grade security**, strict HMAC token verification for customer tracking, parameterized query compilation, and sanitized error logging. 
 
 The Express backend contains a **show-stopping critical security flaw** that completely bypasses authentication and elevates arbitrary callers to restaurant administrators. Express cannot be deployed to any public environment without rewriting its authentication subsystem.
+

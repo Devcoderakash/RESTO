@@ -95,3 +95,4 @@ In Django, this uploads directly to Supabase Storage bucket `resto-menu-images`.
 
 ### 3.3 Silent In-Memory Mock Fallback
 In Express, when a query fails against Supabase (e.g. `POST /api/orders` calling `rpc("create_order")`), it catches the error and creates the order in `localStore` (RAM). This creates a dangerous illusion of success: the frontend receives HTTP 201 Created, but the order is never written to PostgreSQL and disappears upon server restart.
+

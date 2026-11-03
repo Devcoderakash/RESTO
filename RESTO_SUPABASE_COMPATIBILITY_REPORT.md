@@ -127,3 +127,4 @@ However, in the production database:
 | **RPC functions compatibility** | **N/A (Uses Django ORM transactions)** | **0% Match (Type signature collisions)** |
 
 **Conclusion:** Express CANNOT use the existing production database without breaking existing data or rewriting large portions of the database schema.
+

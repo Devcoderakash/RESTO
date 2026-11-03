@@ -240,3 +240,4 @@ All 10 tables have `ROW LEVEL SECURITY` strictly enabled:
   - `public_read_categories`: `USING (is_visible = true AND restaurant_id IN (...))`
   - `public_read_menu_items`: `USING (available = true AND restaurant_id IN (...))`
 - **Operational Write Restrictions:** Anonymous PostgREST writes are completely revoked on `orders`, `order_items`, `payments`, and `service_requests`. All writes must flow through the backend application.
+

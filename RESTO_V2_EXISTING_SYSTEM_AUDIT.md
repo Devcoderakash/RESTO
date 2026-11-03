@@ -195,3 +195,4 @@ stateDiagram-v2
 3. **Multi-Tenant Isolation:**
    - Every single database query must include `restaurant_id = <resolved_id>`.
    - All tenant slugs default to `'olive-and-ember'`.
+

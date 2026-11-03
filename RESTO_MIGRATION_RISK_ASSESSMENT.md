@@ -86,3 +86,4 @@ If an Express cutover fails in production:
 Replacing Django with the existing Express backup is **strongly advised against (NO-GO)**. 
 
 The existing Django backend is already complete, optimized, tested, and running in production. Migrating to Express would introduce critical security vulnerabilities, break real-time operations, and jeopardize existing database integrity without providing any measurable technical advantage.
+

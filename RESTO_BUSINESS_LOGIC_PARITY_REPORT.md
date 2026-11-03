@@ -133,3 +133,4 @@ sequenceDiagram
 ## 5. Business Logic Conclusion
 
 The Express backend does not maintain business logic parity with the current system. Replacing Django with Express would immediately break real-time kitchen order reception, disable dish photo uploads, fail table occupancy synchronization, and cause customer orders to be written to volatile memory where they are lost upon server restart.
+
