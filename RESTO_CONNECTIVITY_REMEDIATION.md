@@ -134,3 +134,4 @@ if (orders.status === 'fulfilled' && Array.isArray(orders.value)) {
 }
 ```
 Existing cached data is never overwritten with `null` or `[]` during temporary network interruptions.
+
