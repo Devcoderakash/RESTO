@@ -54,8 +54,8 @@ def event_stream_generator(restaurant, target_order_id=None, last_event_id=0):
                 }
                 yield sse_format(frame)
 
-        # 3. Stream real-time events as they occur (bounded stream lifetime releases WSGI threads)
-        max_stream_seconds = 30
+        # 3. Stream real-time events as they occur (bounded stream lifetime releases WSGI threads smoothly)
+        max_stream_seconds = 20
         start_ts = time.time()
         while time.time() - start_ts < max_stream_seconds:
             try:

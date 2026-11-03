@@ -81,10 +81,11 @@ export const useBackendStatusStore = create<BackendStatusState>((set, get) => ({
     let nextStatus: BackendConnectionStatus
     if (isColdStart && nextFailures <= 3) {
       nextStatus = 'Server Waking Up'
-    } else if (nextFailures > 4) {
+    } else if (nextFailures >= 3) {
       nextStatus = 'Temporarily Unavailable'
     } else {
-      nextStatus = isColdStart ? 'Server Waking Up' : 'Temporarily Unavailable'
+      // Don't trigger false alarm on a single isolated failure; stay in current status while retrying
+      nextStatus = isColdStart ? 'Server Waking Up' : current.status
     }
 
     set({
@@ -99,3 +100,4 @@ export const useBackendStatusStore = create<BackendStatusState>((set, get) => ({
     })
   },
 }))
+

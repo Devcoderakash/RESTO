@@ -86,7 +86,9 @@ def parse_database_url(raw_url: str, default_ssl: bool = True) -> dict:
 
     # Supabase Transaction Pooler check (Port 6543)
     is_transaction_pooler = (str(port) == "6543" or ":6543" in url_str)
-    conn_max_age = 0 if is_transaction_pooler else int(os.getenv("DB_CONN_MAX_AGE", "600"))
+    # Enable connection reuse with bounded age (default 60s) for high performance;
+    # avoids expensive TCP & TLS re-handshakes on every HTTP request.
+    conn_max_age = int(os.getenv("DB_CONN_MAX_AGE", "60"))
 
     # Parse query params for SSL mode
     options = {}
@@ -98,6 +100,13 @@ def parse_database_url(raw_url: str, default_ssl: bool = True) -> dict:
     if default_ssl and "sslmode" not in options:
         options["sslmode"] = "require"
 
+    # TCP keep-alive and connect timeout settings prevent hung sockets
+    options["connect_timeout"] = int(os.getenv("DB_CONNECT_TIMEOUT", "10"))
+    options["keepalives"] = 1
+    options["keepalives_idle"] = 30
+    options["keepalives_interval"] = 10
+    options["keepalives_count"] = 3
+
     return {
         "ENGINE": "django.db.backends.postgresql",
         "NAME": dbname,
@@ -106,6 +115,7 @@ def parse_database_url(raw_url: str, default_ssl: bool = True) -> dict:
         "HOST": host,
         "PORT": int(port) if str(port).isdigit() else 5432,
         "CONN_MAX_AGE": conn_max_age,
+        "CONN_HEALTH_CHECKS": True,
         "DISABLE_SERVER_SIDE_CURSORS": is_transaction_pooler,
         "OPTIONS": options,
     }

@@ -197,3 +197,4 @@ For safe, idempotent requests (`GET`, `HEAD`):
 
 1. **For Production Zero-Sleep:** To completely eliminate the 30–50s cold start on Render, upgrade the `resto-backend` service from Free to **Starter** ($7/mo) in the Render Dashboard or by setting `plan: starter` in `render.yaml`.
 2. **On the Free Plan:** The platform now operates with complete grace: cached data renders in 0ms, the status badge clearly informs staff of container state (`Server Waking Up`), and safe queries resume automatically the instant the container boots.
+

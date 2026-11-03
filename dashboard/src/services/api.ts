@@ -81,7 +81,7 @@ async function executeRequest<T>(path: string, init?: RequestInit): Promise<T> {
 
         // HTTP 502/503/504 responses indicate Render proxy waking up or cold boot
         const isServerStarting = response.status === 502 || response.status === 503 || response.status === 504
-        if (isServerStarting) {
+        if (isServerStarting && (attempt === maxAttempts - 1 || !isReadOnly)) {
           useBackendStatusStore.getState().recordFailure(message, true)
         }
 
@@ -116,7 +116,10 @@ async function executeRequest<T>(path: string, init?: RequestInit): Promise<T> {
         : String(err)
       lastError = new Error(errorMsg)
 
-      useBackendStatusStore.getState().recordFailure(errorMsg, isColdStart)
+      // Only report failure to status store if all retries are exhausted or if it's a non-retried mutation
+      if (attempt === maxAttempts - 1 || !isReadOnly) {
+        useBackendStatusStore.getState().recordFailure(errorMsg, isColdStart)
+      }
 
       // Strict safety: non-idempotent mutations (POST, PUT, PATCH, DELETE) fail fast without replay
       if (!isReadOnly) {
@@ -587,20 +590,8 @@ export const dashboardApi = {
         referenceNo: payment.transaction_reference ?? undefined,
       }))
 
-    try {
-      const records = listFrom(await request<any>('/payments'), 'payments')
-      return parsePayments(records)
-    } catch (err) {
-      console.warn('Initial payments load failed, retrying once:', err)
-      try {
-        await new Promise((r) => setTimeout(r, 600))
-        const retryRecords = listFrom(await request<any>('/payments'), 'payments')
-        return parsePayments(retryRecords)
-      } catch (retryErr) {
-        console.warn('Payments retry also failed, returning fallback empty list:', retryErr)
-        return []
-      }
-    }
+    const records = listFrom(await request<any>('/payments'), 'payments')
+    return parsePayments(records)
   },
   async getStaff(): Promise<StaffMember[]> {
     return listFrom(await request<any>('/staff'), 'staff').map(normalizeStaff)

@@ -124,6 +124,16 @@ class DashboardRealtimeService {
           }
         }
       }
+
+      // Normal closure of bounded stream window (safely releases WSGI thread)
+      // Immediately schedule transparent seamless reconnect to keep real-time stream live
+      this.isConnecting = false
+      if (!this.reconnectTimer) {
+        this.reconnectTimer = window.setTimeout(() => {
+          this.reconnectTimer = null
+          void this.initStream()
+        }, 200)
+      }
     } catch (err: any) {
       if (err?.name === 'AbortError') return
       this.isConnecting = false

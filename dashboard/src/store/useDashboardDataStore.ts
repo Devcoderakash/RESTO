@@ -35,30 +35,44 @@ async function loadLiveData() {
   const errors: string[] = []
   const [orders, tables, requests, overview, payments, dailySales] = results
 
-  if (orders.status === 'fulfilled') useOrderStore.setState({ orders: orders.value })
-  else errors.push(`Orders: ${getErrorMessage(orders.reason)}`)
+  if (orders.status === 'fulfilled' && Array.isArray(orders.value)) {
+    useOrderStore.setState({ orders: orders.value })
+  } else if (orders.status === 'rejected') {
+    errors.push(`Orders: ${getErrorMessage(orders.reason)}`)
+  }
 
-  if (tables.status === 'fulfilled') useTableStore.setState({ tables: tables.value })
-  else errors.push(`Tables: ${getErrorMessage(tables.reason)}`)
+  if (tables.status === 'fulfilled' && Array.isArray(tables.value)) {
+    useTableStore.setState({ tables: tables.value })
+  } else if (tables.status === 'rejected') {
+    errors.push(`Tables: ${getErrorMessage(tables.reason)}`)
+  }
 
-  if (requests.status === 'fulfilled') {
+  if (requests.status === 'fulfilled' && requests.value) {
     useWaiterRequestStore.getState().setRequests({
-      tableRequests: requests.value.tableRequests,
-      billRequests: requests.value.billRequests,
+      tableRequests: requests.value.tableRequests || [],
+      billRequests: requests.value.billRequests || [],
     })
-  } else errors.push(`Service requests: ${getErrorMessage(requests.reason)}`)
+  } else if (requests.status === 'rejected') {
+    errors.push(`Service requests: ${getErrorMessage(requests.reason)}`)
+  }
 
-  if (overview.status === 'fulfilled') useDashboardDataStore.setState({ overview: overview.value })
-  else errors.push(`Overview: ${getErrorMessage(overview.reason)}`)
+  if (overview.status === 'fulfilled' && overview.value) {
+    useDashboardDataStore.setState({ overview: overview.value })
+  } else if (overview.status === 'rejected') {
+    errors.push(`Overview: ${getErrorMessage(overview.reason)}`)
+  }
 
-  if (payments.status === 'fulfilled') {
+  if (payments.status === 'fulfilled' && Array.isArray(payments.value)) {
     usePaymentStore.setState({ transactions: payments.value })
-  } else {
+  } else if (payments.status === 'rejected') {
     console.warn('Payments load non-fatal warning:', payments.reason)
   }
 
-  if (dailySales.status === 'fulfilled') useDashboardDataStore.setState({ dailySales: dailySales.value })
-  else errors.push(`Daily sales: ${getErrorMessage(dailySales.reason)}`)
+  if (dailySales.status === 'fulfilled' && Array.isArray(dailySales.value)) {
+    useDashboardDataStore.setState({ dailySales: dailySales.value })
+  } else if (dailySales.status === 'rejected') {
+    errors.push(`Daily sales: ${getErrorMessage(dailySales.reason)}`)
+  }
 
   return errors
 }
