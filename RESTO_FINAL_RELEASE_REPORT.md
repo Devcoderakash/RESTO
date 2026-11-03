@@ -68,3 +68,4 @@ The RESTO restaurant platform has satisfied all architectural, functional, secur
 2. **Render Web Service:** Render will automatically deploy the latest commit using the updated `render.yaml` and `Procfile` configuration (`gunicorn -k gthread --threads 8 --workers 2 --timeout 120 config.wsgi:application`).
 3. **Vercel Frontend & Dashboard:** Vercel automatically deploys the updated `frontend/` and `dashboard/` Vite builds.
 4. **Smoke Check:** Hit `https://resto-vc53.onrender.com/health` to confirm `status: ok` and `database_connected: true`.
+

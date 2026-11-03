@@ -87,3 +87,4 @@ Each action is audited across its full architectural lifecycle:
 - **Backend Endpoints Verified Active:** 100%
 - **All Critical Paths Guarded by Mutex / Loading States:** Yes (`updatingOrderIds`, `isAdvancing`, `isSubmitting`, `isUploading`).
 - **PostgreSQL 15 as Single Source of Truth:** Guaranteed across all mutations.
+

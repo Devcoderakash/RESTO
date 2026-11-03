@@ -174,8 +174,11 @@ def run_security_suite():
         cust_stream_bad = http_request(f"/api/realtime/stream?restaurantSlug=olive-and-ember&orderId={order_id}")
         record("Order-scoped SSE stream without accessToken rejected", cust_stream_bad["status"] == 401, f"HTTP {cust_stream_bad['status']}")
 
-    # 5d. Staff sync with valid token allowed
-    sync_staff = http_request(f"/api/realtime/sync?restaurantSlug=olive-and-ember&staffToken={STAFF_TOKEN}")
+    # 5d. Staff sync with valid token header allowed
+    sync_staff = http_request(
+        "/api/realtime/sync?restaurantSlug=olive-and-ember",
+        headers=VALID_AUTH,
+    )
     record("Staff SSE sync with valid staff token allowed", sync_staff["status"] == 200, f"HTTP {sync_staff['status']}")
 
     # -------------------------------------------------------------------------

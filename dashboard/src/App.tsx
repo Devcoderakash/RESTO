@@ -32,6 +32,15 @@ const AppRoutes: React.FC = () => {
     }
   }, [loadDashboard, refreshLiveData])
 
+  // Keep Render alive during active sessions — ping /health every 12 minutes
+  useEffect(() => {
+    const healthUrl = `${(import.meta.env.VITE_API_URL || 'https://resto-vc53.onrender.com/api').replace(/\/+$/, '').replace(/\/api$/, '')}/api/health`
+    const keepAlive = window.setInterval(() => {
+      fetch(healthUrl, { method: 'GET' }).catch(() => {})
+    }, 12 * 60 * 1000) // 12 minutes
+    return () => window.clearInterval(keepAlive)
+  }, [])
+
   return (
     <Routes>
       {/* Explicit redirect for legacy login */}

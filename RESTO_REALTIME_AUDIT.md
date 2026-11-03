@@ -69,3 +69,4 @@ flowchart LR
 2. **Event Delivery Latency:** Median 18ms between PostgreSQL commit and browser DOM update.
 3. **Reconnection Recovery:** 100% of missed events recovered via `sinceId` sync after 60s simulated network disconnection.
 4. **Security:** Missing or invalid Bearer token on staff sync/stream rejected with HTTP 401 Unauthorized.
+

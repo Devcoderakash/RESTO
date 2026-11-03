@@ -72,3 +72,4 @@ Buttons like `Accept Order` and `Create Table` had no mutex lock or disabling st
 #### The Architectural Solution:
 1. **Frontend Mutex Sets:** Added `updatingOrderIds: Set<string>` and `isAdvancing` flags to disable buttons immediately upon click and display an animated spinner.
 2. **Backend Idempotency:** Made the state transition service idempotent: transitioning an order to its current status returns `200 OK` rather than raising a state machine conflict.
+

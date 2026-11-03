@@ -36,31 +36,68 @@ function apiUrl(path: string): string {
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const token = sessionStorage.getItem(AUTH_TOKEN_KEY) || DEFAULT_STAFF_TOKEN
-  const response = await fetch(apiUrl(path), {
-    ...init,
-    headers: {
-      Accept: 'application/json',
-      ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
-      Authorization: `Bearer ${token}`,
-      'X-Staff-Internal': 'true',
-      ...init?.headers,
-    },
-  })
+  const method = (init?.method || 'GET').toUpperCase()
+  const isReadOnly = method === 'GET' || method === 'HEAD'
+  const maxAttempts = isReadOnly ? 3 : 1
+  const baseDelay = 3000
 
-  if (!response.ok) {
-    const body = await response.text()
-    let message = body || `API request failed (${response.status} ${response.statusText})`
+  let lastError: Error | null = null
+
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 20000)
+
     try {
-      const parsed = JSON.parse(body)
-      message = parsed?.error?.message ?? parsed?.message ?? message
-    } catch {
-      // Keep plain-text API errors readable.
+      const response = await fetch(apiUrl(path), {
+        ...init,
+        signal: init?.signal || controller.signal,
+        headers: {
+          Accept: 'application/json',
+          ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
+          Authorization: `Bearer ${token}`,
+          'X-Staff-Internal': 'true',
+          ...init?.headers,
+        },
+      })
+
+      clearTimeout(timeoutId)
+
+      if (!response.ok) {
+        const body = await response.text()
+        let message = body || `API request failed (${response.status} ${response.statusText})`
+        try {
+          const parsed = JSON.parse(body)
+          message = parsed?.error?.message ?? parsed?.message ?? message
+        } catch {
+          // Keep plain-text API errors readable.
+        }
+        // Don't retry 4xx client errors — they won't succeed on retry
+        if (response.status >= 400 && response.status < 500) {
+          throw new Error(message)
+        }
+        lastError = new Error(message)
+      } else {
+        if (response.status === 204) return undefined as T
+        return response.json() as Promise<T>
+      }
+    } catch (err: any) {
+      clearTimeout(timeoutId)
+      if (err?.name === 'AbortError') {
+        lastError = new Error('Server is starting up, please wait...')
+      } else if (err?.message?.includes('fetch') || err?.message?.includes('network') || err?.message?.includes('Failed to fetch')) {
+        lastError = new Error('Server is starting up, please wait...')
+      } else {
+        lastError = err instanceof Error ? err : new Error(String(err))
+      }
     }
-    throw new Error(message)
+
+    // Wait before retry (exponential backoff)
+    if (attempt < maxAttempts - 1) {
+      await new Promise((resolve) => setTimeout(resolve, baseDelay * Math.pow(2, attempt)))
+    }
   }
 
-  if (response.status === 204) return undefined as T
-  return response.json() as Promise<T>
+  throw lastError || new Error('Request failed after retries')
 }
 
 function unwrap(value: any): any {

@@ -73,3 +73,4 @@
 
 ### `frontend/src/store/cartStore.ts`
 - **Fix:** Aligned tax calculation with backend Decimal precision (`subtotal * 0.05` for GST).
+

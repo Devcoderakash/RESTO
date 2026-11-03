@@ -48,10 +48,16 @@ export const Layout: React.FC = () => {
             </div>
           )}
           {error && (
-            <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
-              <span>Dashboard API error: {error}</span>
+            <div className={`mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3 text-sm ${
+              error.includes('starting up') || error.includes('please wait')
+                ? 'border-amber-200 bg-amber-50 text-amber-800'
+                : 'border-rose-200 bg-rose-50 text-rose-800'
+            }`}>
+              <span>{error.includes('starting up') || error.includes('please wait')
+                ? '⏳ Server is waking up — this can take up to 30 seconds on free hosting...'
+                : `Dashboard API error: ${error}`}</span>
               <Button variant="outline" size="sm" onClick={() => void loadDashboard()}>
-                Retry
+                {error.includes('starting up') || error.includes('please wait') ? 'Retry Now' : 'Retry'}
               </Button>
             </div>
           )}

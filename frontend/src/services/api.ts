@@ -22,41 +22,83 @@ export class ApiError extends Error {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_URL}${path}`, {
-    ...init,
-    headers: {
-      Accept: 'application/json',
-      ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
-      ...init?.headers,
-    },
-  })
+  const method = (init?.method || 'GET').toUpperCase()
+  const isReadOnly = method === 'GET' || method === 'HEAD'
+  const maxAttempts = isReadOnly ? 3 : 1
+  const baseDelay = 3000
 
-  const responseText = await response.text()
-  let body: unknown
-  if (responseText) {
+  let lastError: Error | null = null
+
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 20000)
+
     try {
-      body = JSON.parse(responseText)
-    } catch {
-      if (response.ok) throw new ApiError('The server returned an invalid response.', response.status)
-      body = { message: responseText }
+      const response = await fetch(`${API_URL}${path}`, {
+        ...init,
+        signal: init?.signal || controller.signal,
+        headers: {
+          Accept: 'application/json',
+          ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
+          ...init?.headers,
+        },
+      })
+
+      clearTimeout(timeoutId)
+
+      const responseText = await response.text()
+      let body: unknown
+      if (responseText) {
+        try {
+          body = JSON.parse(responseText)
+        } catch {
+          if (response.ok) throw new ApiError('The server returned an invalid response.', response.status)
+          body = { message: responseText }
+        }
+      }
+      if (!response.ok) {
+        const message =
+          typeof body === 'object' && body !== null && 'message' in body && typeof body.message === 'string'
+            ? body.message
+            : typeof body === 'object' && body !== null && 'error' in body &&
+                typeof body.error === 'object' && body.error !== null && 'message' in body.error &&
+                typeof body.error.message === 'string'
+              ? body.error.message
+              : `Request failed (${response.status})`
+        // Don't retry 4xx client errors
+        if (response.status >= 400 && response.status < 500) {
+          throw new ApiError(message, response.status)
+        }
+        lastError = new ApiError(message, response.status)
+      } else {
+        if (typeof body === 'object' && body !== null && 'data' in body) {
+          return body.data as T
+        }
+        return body as T
+      }
+    } catch (err: any) {
+      clearTimeout(timeoutId)
+      if (err instanceof ApiError) {
+        lastError = err
+        if (!isReadOnly) throw err
+      } else if (err?.name === 'AbortError') {
+        lastError = new ApiError('Server is starting up, please wait...', 0)
+      } else {
+        lastError = new ApiError(
+          err?.message?.includes('fetch') || err?.message?.includes('network')
+            ? 'Server is starting up, please wait...'
+            : err?.message || 'Request failed',
+          0
+        )
+      }
+    }
+
+    if (attempt < maxAttempts - 1) {
+      await new Promise((resolve) => setTimeout(resolve, baseDelay * Math.pow(2, attempt)))
     }
   }
-  if (!response.ok) {
-    const message =
-      typeof body === 'object' && body !== null && 'message' in body && typeof body.message === 'string'
-        ? body.message
-        : typeof body === 'object' && body !== null && 'error' in body &&
-            typeof body.error === 'object' && body.error !== null && 'message' in body.error &&
-            typeof body.error.message === 'string'
-          ? body.error.message
-          : `Request failed (${response.status})`
-    throw new ApiError(message, response.status)
-  }
 
-  if (typeof body === 'object' && body !== null && 'data' in body) {
-    return body.data as T
-  }
-  return body as T
+  throw lastError || new ApiError('Request failed after retries', 0)
 }
 
 export interface ApiTable {

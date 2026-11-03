@@ -122,3 +122,4 @@
   Floating point math discrepancies between React cart and Django Decimal arithmetic.
 - **Resolution:**
   Aligned cart calculation with backend formula: `subtotal * 0.05` for GST (2.5% CGST + 2.5% SGST), 0% service charge default, rounded to 2 decimal places.
+
