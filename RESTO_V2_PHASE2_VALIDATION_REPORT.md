@@ -83,3 +83,4 @@ Upon explicit user authorization to proceed to Phase 3:
 3. **Step 3.3: Execute Live V2 Data Migration:** Run `migrate_v1_to_v2.ts --commit` to populate `resto_v2` with the 35 production records.
 4. **Step 3.4: Build Node.js Backend Core:** Implement database pool, repositories, services, controllers, auth middleware, and the LISTEN/NOTIFY realtime bridge in `backend_node/src/`.
 5. **Step 3.5: Run Full Automated Verification Suite:** Execute unit, integration, and contract tests against `backend_node/`.
+

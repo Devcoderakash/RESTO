@@ -27,7 +27,7 @@ backend_node/
 │   ├── config/            # Environment validation & app configuration
 │   ├── database/          # pg.Pool connection manager & transaction helpers
 │   ├── middleware/        # Auth, error handling, rate limiting, logging
-│   ├── modules/           # Domain feature modules
+│   ├── modules/           # Domain feature modules (12 modules)
 │   │   ├── restaurants/   # Restaurant details & branding
 │   │   ├── tables/        # Floor management & occupancy
 │   │   ├── categories/    # Menu categories
@@ -35,17 +35,63 @@ backend_node/
 │   │   ├── orders/        # Order placement & state transitions
 │   │   ├── payments/      # Payment processing & reconciliation
 │   │   ├── staff/         # Staff management & credentials
-│   │   ├── waiter-requests/# Waiter calls & bill assistance
-│   │   ├── tracking/      # HMAC customer order tracking
-│   │   ├── realtime/      # SSE stream & sync dispatcher
+│   │   ├── service-requests/# Waiter calls & bill assistance
+│   │   ├── realtime/      # SSE stream & PostgreSQL LISTEN/NOTIFY bridge
 │   │   ├── uploads/       # Supabase Storage image upload
-│   │   ├── analytics/     # Dashboard overview & daily sales
-│   │   └── settings/      # Operational restaurant settings
+│   │   └── analytics/     # Dashboard overview & daily sales
+│   ├── routes.ts          # Master API router wiring 45 endpoints
 │   ├── app.ts             # Express app bootstrap & middleware pipeline
 │   └── server.ts          # Server listener & graceful shutdown handlers
-├── migrations/            # Versioned SQL migrations for resto_v2
+├── migrations/            # Versioned SQL migrations for resto_v2 (001-004)
 ├── tests/                 # Vitest & Supertest automated test suites
+│   ├── setupTestDb.ts     # In-memory PostgreSQL schema & baseline seed
+│   ├── api-contracts.test.ts # 45-endpoint contract test suite
+│   ├── business-logic.test.ts# GST, idempotency, payments, state machine
+│   ├── security.test.ts   # Auth, token rejection, tenant isolation
+│   └── realtime.test.ts   # Outbox, cursor replay, fan-out
 ├── package.json
 └── tsconfig.json
 ```
+
+---
+
+## 3. Database Connection Architecture (Port 6543 vs Port 5432)
+
+Supabase PostgreSQL manages connections through PgBouncer:
+
+1. **Application Connection Pooler (`DATABASE_URL` — Port 6543):**
+   - Configured for **Transaction Pooling mode**.
+   - Handles standard application queries, mutations, and database transactions (`BEGIN` ... `COMMIT`).
+   - Uses `search_path=resto_v2` to restrict all operations to the isolated V2 schema.
+
+2. **Dedicated Realtime Listener (`DIRECT_DATABASE_URL` — Port 5432):**
+   - Configured for **Session Mode / Direct Connection**.
+   - **CRITICAL:** Transaction poolers (Port 6543) do NOT support PostgreSQL `LISTEN`. The connection drops immediately.
+   - The `RealtimeBridge` uses a standalone `pg.Client` connected to port 5432 to execute `LISTEN resto_v2_realtime_channel`.
+   - Incorporates automated reconnection with bounded exponential backoff and full jitter.
+
+---
+
+## 4. Development & Testing Commands
+
+```bash
+# 1. Typecheck TypeScript codebase
+npm run typecheck
+
+# 2. Compile to production dist/
+npm run build
+
+# 3. Run complete automated test suite (73 tests across 4 suites)
+npm test
+
+# 4. Run test coverage report
+npm run test:coverage
+
+# 5. Start development hot-reload server
+npm run dev
+
+# 6. Start production compiled server
+npm start
+```
+
 

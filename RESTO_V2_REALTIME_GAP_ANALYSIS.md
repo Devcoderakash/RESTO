@@ -262,3 +262,4 @@ When an SSE client establishes a connection:
 - **Pure In-Memory SSE Dispatcher:** **FAIL (Not multi-instance capable)**.
 - **PostgreSQL Transactional Outbox + LISTEN/NOTIFY Bridge:** **PASS (Fully fortified & production-ready)**.
 - **Zero Impact on Client Code:** Both customer frontend and restaurant dashboard consume standard SSE streams with zero changes to existing client code.
+
