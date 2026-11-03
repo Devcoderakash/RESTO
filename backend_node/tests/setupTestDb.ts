@@ -106,12 +106,14 @@ export function setupTestDatabase() {
       customer_phone VARCHAR(50),
       status VARCHAR(20) NOT NULL DEFAULT 'pending',
       subtotal NUMERIC(10,2) NOT NULL DEFAULT 0.00,
-      tax NUMERIC(10,2) NOT NULL DEFAULT 0.00,
+      cgst NUMERIC(10,2) NOT NULL DEFAULT 0.00,
+      sgst NUMERIC(10,2) NOT NULL DEFAULT 0.00,
+      gst_total NUMERIC(10,2) NOT NULL DEFAULT 0.00,
       service_charge NUMERIC(10,2) NOT NULL DEFAULT 0.00,
-      total NUMERIC(10,2) NOT NULL DEFAULT 0.00,
-      special_instructions TEXT,
+      final_total NUMERIC(10,2) NOT NULL DEFAULT 0.00,
+      order_notes TEXT,
       idempotency_key VARCHAR(100),
-      tracking_token VARCHAR(100),
+      tracking_token_hash VARCHAR(100),
       created_at TIMESTAMP NOT NULL DEFAULT clock_timestamp(),
       updated_at TIMESTAMP NOT NULL DEFAULT clock_timestamp()
     );
@@ -121,10 +123,11 @@ export function setupTestDatabase() {
       order_id VARCHAR(64) NOT NULL,
       menu_item_id VARCHAR(64) NOT NULL,
       item_name VARCHAR(150) NOT NULL,
+      food_type VARCHAR(20) NOT NULL DEFAULT 'veg',
       unit_price NUMERIC(10,2) NOT NULL,
       quantity INTEGER NOT NULL DEFAULT 1,
       total_price NUMERIC(10,2) NOT NULL,
-      notes TEXT,
+      special_instructions TEXT,
       created_at TIMESTAMP NOT NULL DEFAULT clock_timestamp()
     );
 
@@ -134,7 +137,7 @@ export function setupTestDatabase() {
       order_id VARCHAR(64) NOT NULL,
       amount NUMERIC(10,2) NOT NULL,
       payment_method VARCHAR(50) NOT NULL DEFAULT 'cash',
-      status VARCHAR(20) NOT NULL DEFAULT 'pending',
+      payment_status VARCHAR(20) NOT NULL DEFAULT 'pending',
       transaction_reference VARCHAR(100),
       created_at TIMESTAMP NOT NULL DEFAULT clock_timestamp()
     );
@@ -218,10 +221,10 @@ export function setupTestDatabase() {
 
     INSERT INTO resto_v2.orders (
       id, restaurant_id, order_number, table_id, table_number, customer_name, status,
-      subtotal, tax, service_charge, total, tracking_token
+      subtotal, cgst, sgst, gst_total, service_charge, final_total, tracking_token_hash
     ) VALUES (
       'ord-20261102-001', 'rest-olive-ember-01', 'ORD-1001', 'tbl-01', '01', 'Rohan Sharma', 'completed',
-      1210.00, 60.50, 0.00, 1270.50, 'trk-token-001'
+      1210.00, 30.25, 30.25, 60.50, 0.00, 1270.50, 'trk-token-001'
     );
 
     INSERT INTO resto_v2.order_items (id, order_id, menu_item_id, item_name, unit_price, quantity, total_price)
@@ -229,7 +232,7 @@ export function setupTestDatabase() {
       ('itm-001-1', 'ord-20261102-001', 'item-pizza-01', 'Truffle Mushroom Pizza', 480.00, 2, 960.00),
       ('itm-001-2', 'ord-20261102-001', 'item-dessert-01', 'Classic Tiramisu', 250.00, 1, 250.00);
 
-    INSERT INTO resto_v2.payments (id, restaurant_id, order_id, amount, payment_method, status, transaction_reference)
+    INSERT INTO resto_v2.payments (id, restaurant_id, order_id, amount, payment_method, payment_status, transaction_reference)
     VALUES ('pay-20261102-001', 'rest-olive-ember-01', 'ord-20261102-001', 1270.50, 'upi', 'completed', 'UPI-REF-001');
 
     INSERT INTO resto_v2.service_requests (id, restaurant_id, table_id, table_number, request_type, status)

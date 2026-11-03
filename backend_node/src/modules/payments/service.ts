@@ -53,7 +53,8 @@ export class PaymentService {
       throw new BadRequestError(`Invalid payment method '${paymentMethod}'. Allowed: ${validMethods.join(', ')}`);
     }
 
-    const paymentAmount = data.amount !== undefined ? Number(data.amount) : Number(order.total);
+    const orderTotal = Number((order as any).final_total ?? (order as any).total ?? 0);
+    const paymentAmount = data.amount !== undefined ? Number(data.amount) : orderTotal;
     const paymentId = `pay-${randomUUID().substring(0, 12)}`;
 
     let tableReleased = false;
@@ -63,7 +64,7 @@ export class PaymentService {
       // 1. Insert payment record
       const res = await client.query<PaymentRow>(
         `INSERT INTO resto_v2.payments (
-          id, restaurant_id, order_id, amount, payment_method, status, transaction_reference
+          id, restaurant_id, order_id, amount, payment_method, payment_status, transaction_reference
         ) VALUES ($1, $2, $3, $4, $5, 'completed', $6)
         RETURNING *;`,
         [paymentId, restaurantId, orderId, paymentAmount, normalizedMethod, transactionReference || null]
@@ -85,7 +86,7 @@ export class PaymentService {
 
       if (remainingActive === 0 && order.table_id) {
         await client.query(
-          `UPDATE resto_v2.restaurant_tables SET status = 'available', updated_at = clock_timestamp() WHERE id = $1;`,
+          `UPDATE resto_v2.restaurant_tables SET status = 'available' WHERE id = $1;`,
           [order.table_id]
         );
         tableReleased = true;
@@ -142,6 +143,7 @@ export class PaymentService {
 
   private formatPayment(r: PaymentRow) {
     const amountNum = Number(r.amount);
+    const status = (r as any).payment_status || (r as any).status || 'completed';
     return {
       id: r.id,
       restaurantId: r.restaurant_id,
@@ -151,7 +153,9 @@ export class PaymentService {
       amount: amountNum,
       paymentMethod: r.payment_method,
       payment_method: r.payment_method,
-      status: r.status,
+      status,
+      paymentStatus: status,
+      payment_status: status,
       transactionReference: r.transaction_reference,
       transaction_reference: r.transaction_reference,
       createdAt: r.created_at,

@@ -51,3 +51,4 @@ Cross-referencing `backend/supabase/backup_v1_production_data.json`:
 3. **MIME Enforcement:** The Node.js V2 upload service (`POST /api/uploads/menu-image`) will continue to enforce standard MIME validation (`image/jpeg`, `image/png`, `image/webp`) and 5MB payload restrictions.
 
 **Final Storage Assessment: 100% VERIFIED & INTEGRITY CONFIRMED.**
+

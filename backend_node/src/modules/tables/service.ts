@@ -148,8 +148,8 @@ export class TableService {
       status: r.status,
       qrCodeUrl: r.qr_code_url,
       qr_code_url: r.qr_code_url,
-      isActive: r.is_active,
-      is_active: r.is_active,
+      isActive: (r as any).is_active ?? (r.status !== 'inactive'),
+      is_active: (r as any).is_active ?? (r.status !== 'inactive'),
       createdAt: r.created_at,
       created_at: r.created_at,
     };

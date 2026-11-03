@@ -143,7 +143,7 @@ export class OrderService {
       // If table found and available, set occupied
       if (table && table.status === 'available') {
         await client.query(
-          `UPDATE resto_v2.restaurant_tables SET status = 'occupied', updated_at = clock_timestamp() WHERE id = $1;`,
+          `UPDATE resto_v2.restaurant_tables SET status = 'occupied' WHERE id = $1;`,
           [table.id]
         );
       }
@@ -267,10 +267,12 @@ export class OrderService {
   }
 
   private formatOrder(order: OrderRow, items: OrderItemRow[]) {
-    const subtotal = Number(order.subtotal);
-    const tax = Number(order.tax);
-    const serviceCharge = Number(order.service_charge);
-    const total = Number(order.total);
+    const subtotal = Number((order as any).subtotal || 0);
+    const tax = Number((order as any).gst_total ?? (order as any).tax ?? 0);
+    const serviceCharge = Number((order as any).service_charge || 0);
+    const total = Number((order as any).final_total ?? (order as any).total ?? 0);
+    const specialInstructions = (order as any).order_notes ?? (order as any).special_instructions ?? null;
+    const trackingToken = (order as any).tracking_token ?? (order as any).tracking_token_hash ?? '';
 
     return {
       id: order.id,
@@ -289,16 +291,19 @@ export class OrderService {
       status: order.status,
       subtotal,
       tax,
-      cgst: Number((subtotal * 0.025).toFixed(2)),
-      sgst: Number((subtotal * 0.025).toFixed(2)),
+      cgst: Number((order as any).cgst ?? (subtotal * 0.025).toFixed(2)),
+      sgst: Number((order as any).sgst ?? (subtotal * 0.025).toFixed(2)),
+      gst_total: tax,
       serviceCharge,
       service_charge: serviceCharge,
       total,
+      finalTotal: total,
+      final_total: total,
       totalAmount: total,
       total_amount: total,
-      specialInstructions: order.special_instructions,
-      special_instructions: order.special_instructions,
-      trackingToken: order.tracking_token,
+      specialInstructions,
+      special_instructions: specialInstructions,
+      trackingToken,
       items: items.map((i) => ({
         id: i.id,
         menuItemId: i.menu_item_id,
@@ -311,7 +316,7 @@ export class OrderService {
         quantity: Number(i.quantity),
         totalPrice: Number(i.total_price),
         total_price: Number(i.total_price),
-        notes: i.notes,
+        notes: (i as any).special_instructions ?? (i as any).notes ?? null,
       })),
       createdAt: order.created_at,
       created_at: order.created_at,

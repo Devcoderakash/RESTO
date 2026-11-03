@@ -82,7 +82,7 @@ export class OrderRepository {
 
   public async getOrderItems(orderId: string): Promise<OrderItemRow[]> {
     const res = await query<OrderItemRow>(
-      `SELECT * FROM resto_v2.order_items WHERE order_id = $1 ORDER BY created_at ASC;`,
+      `SELECT * FROM resto_v2.order_items WHERE order_id = $1;`,
       [orderId]
     );
     return res.rows;
@@ -104,12 +104,15 @@ export class OrderRepository {
     idempotencyKey?: string;
     trackingToken?: string;
   }): Promise<OrderRow> {
+    const cgst = Number((order.subtotal * 0.025).toFixed(2));
+    const sgst = Number((order.tax - cgst).toFixed(2));
+
     const sql = `
       INSERT INTO resto_v2.orders (
         id, restaurant_id, order_number, table_id, table_number,
-        customer_name, customer_phone, status, subtotal, tax,
-        service_charge, total, special_instructions, idempotency_key, tracking_token
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending', $8, $9, $10, $11, $12, $13, $14)
+        customer_name, customer_phone, status, subtotal, cgst, sgst, gst_total,
+        service_charge, final_total, order_notes, idempotency_key, tracking_token_hash
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending', $8, $9, $10, $11, $12, $13, $14, $15, $16)
       RETURNING *;
     `;
     const res = await client.query<OrderRow>(sql, [
@@ -121,12 +124,14 @@ export class OrderRepository {
       order.customerName,
       order.customerPhone || null,
       order.subtotal,
+      cgst,
+      sgst,
       order.tax,
       order.serviceCharge,
       order.total,
       order.specialInstructions || null,
-      order.idempotencyKey || null,
-      order.trackingToken || null,
+      order.idempotencyKey || '',
+      order.trackingToken || '',
     ]);
     return res.rows[0];
   }
@@ -141,6 +146,7 @@ export class OrderRepository {
       unitPrice: number;
       quantity: number;
       totalPrice: number;
+      foodType?: string;
       notes?: string;
     }>
   ): Promise<OrderItemRow[]> {
@@ -148,10 +154,20 @@ export class OrderRepository {
     for (const item of items) {
       const res = await client.query<OrderItemRow>(
         `INSERT INTO resto_v2.order_items (
-          id, order_id, menu_item_id, item_name, unit_price, quantity, total_price, notes
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+          id, order_id, menu_item_id, item_name, food_type, unit_price, quantity, total_price, special_instructions
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
         RETURNING *;`,
-        [item.id, item.orderId, item.menuItemId, item.itemName, item.unitPrice, item.quantity, item.totalPrice, item.notes || null]
+        [
+          item.id,
+          item.orderId,
+          item.menuItemId,
+          item.itemName,
+          item.foodType || 'veg',
+          item.unitPrice,
+          item.quantity,
+          item.totalPrice,
+          item.notes || null,
+        ]
       );
       rows.push(res.rows[0]);
     }

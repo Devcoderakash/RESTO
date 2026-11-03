@@ -30,7 +30,7 @@ export class PaymentRepository {
 
   public async findByOrderId(orderId: string): Promise<PaymentRow | null> {
     const res = await query<PaymentRow>(
-      `SELECT * FROM resto_v2.payments WHERE order_id = $1 AND status = 'completed' LIMIT 1;`,
+      `SELECT * FROM resto_v2.payments WHERE order_id = $1 AND payment_status = 'completed' LIMIT 1;`,
       [orderId]
     );
     return res.rows[0] || null;
@@ -47,7 +47,7 @@ export class PaymentRepository {
   }): Promise<PaymentRow> {
     const res = await query<PaymentRow>(
       `INSERT INTO resto_v2.payments (
-        id, restaurant_id, order_id, amount, payment_method, status, transaction_reference
+        id, restaurant_id, order_id, amount, payment_method, payment_status, transaction_reference
       ) VALUES ($1, $2, $3, $4, $5, COALESCE($6, 'completed'), $7)
       RETURNING *;`,
       [
@@ -66,7 +66,7 @@ export class PaymentRepository {
   public async updateStatus(id: string, status: 'pending' | 'completed' | 'failed' | 'refunded'): Promise<PaymentRow | null> {
     const res = await query<PaymentRow>(
       `UPDATE resto_v2.payments
-       SET status = $2
+       SET payment_status = $2
        WHERE id = $1
        RETURNING *;`,
       [id, status]

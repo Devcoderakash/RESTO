@@ -71,3 +71,4 @@ export function verifyStaffToken(token: string): StaffJWTPayload {
     throw new UnauthorizedError('Token verification failed');
   }
 }
+

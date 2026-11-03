@@ -58,8 +58,8 @@ export class AnalyticsService {
       SELECT
         COUNT(*) AS total_orders,
         COUNT(CASE WHEN status IN ('pending', 'confirmed', 'preparing') THEN 1 ELSE NULL END) AS pending_orders,
-        COALESCE(SUM(CASE WHEN status != 'cancelled' THEN total ELSE 0 END), 0) AS today_revenue,
-        COALESCE(AVG(CASE WHEN status != 'cancelled' THEN total ELSE NULL END), 0) AS avg_order_value
+        COALESCE(SUM(CASE WHEN status != 'cancelled' THEN final_total ELSE 0 END), 0) AS today_revenue,
+        COALESCE(AVG(CASE WHEN status != 'cancelled' THEN final_total ELSE NULL END), 0) AS avg_order_value
       FROM resto_v2.orders
       WHERE restaurant_id = $1;
     `;
@@ -72,7 +72,7 @@ export class AnalyticsService {
         COUNT(*) AS total_tables,
         COUNT(CASE WHEN status = 'occupied' THEN 1 ELSE NULL END) AS active_tables
       FROM resto_v2.restaurant_tables
-      WHERE restaurant_id = $1 AND is_active = true;
+      WHERE restaurant_id = $1 AND status <> 'inactive';
     `;
     const tableRes = await query(tableStatsSql, [restaurantId]);
     const tableStats = tableRes.rows[0] || {};
@@ -99,7 +99,7 @@ export class AnalyticsService {
 
   public async getDailySales(restaurantId: string, _days = 7) {
     const sql = `
-      SELECT id, total, created_at
+      SELECT id, final_total AS total, created_at
       FROM resto_v2.orders
       WHERE restaurant_id = $1 AND status != 'cancelled'
       ORDER BY created_at ASC;
