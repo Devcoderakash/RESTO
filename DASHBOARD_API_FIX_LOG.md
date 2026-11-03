@@ -84,3 +84,4 @@ flowchart TD
 Both frontend packages were built with zero compilation errors:
 - `npm --prefix dashboard run build`: Built cleanly in 414ms (`dist/assets/index-DqvWtPcK.js`, 570.53 kB).
 - `npm --prefix frontend run build`: Built cleanly in 337ms (`dist/assets/index-b6V6b8Og.js`, 447.89 kB).
+

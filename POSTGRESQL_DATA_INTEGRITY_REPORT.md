@@ -84,3 +84,4 @@ A comprehensive schema, constraint, and relation audit was conducted on the Supa
 - **Permanent Store:** PostgreSQL 15 on Supabase.
 - **Cache Invalidation:** Browser `localStorage` and `sessionStorage` serve strictly as transient SWR read caches to provide 0ms instant display.
 - **Refresh Behavior:** On browser reload, stores hydrate immediately from SWR cache, execute background verification against PostgreSQL, and synchronize any updated records seamlessly without screen flickering or data loss.
+

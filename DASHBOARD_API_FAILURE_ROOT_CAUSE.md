@@ -118,3 +118,4 @@ The backend `/api/health` endpoint is an isolated, lightweight check:
 | `/api/payments` | GET | Failed (Timeout / 502) | **200 OK (1.67s)** | Dual-retry loop + graceful fallback |
 | `/api/staff/restaurant-settings`| GET | Failed (Timeout / 502) | **200 OK (1.58s)** | Header auth validation + retry |
 | `/api/staff/menu` | GET | Failed (Timeout / 502) | **200 OK (1.87s)** | SWR cache pre-hydration |
+

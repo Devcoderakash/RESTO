@@ -71,3 +71,4 @@ A comprehensive automated HTTP audit was conducted directly against the live pro
 1. **Unauthenticated Access:** Requests to `/api/orders`, `/api/tables`, `/api/dashboard/overview`, `/api/payments`, and `/api/service-requests` without an `Authorization` header return `HTTP 401 Unauthorized`.
 2. **Invalid Bearer Token:** Requests with forged tokens (`Bearer fake-token-12345`) return `HTTP 401 Unauthorized`.
 3. **Query Parameter Deprecation:** Supplying `?staffToken=...` in the query URL without headers returns `HTTP 401 Unauthorized`, enforcing OWASP standards against query string token logging.
+

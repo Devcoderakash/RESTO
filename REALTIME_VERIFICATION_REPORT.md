@@ -74,3 +74,4 @@ graph LR
    - Response: `HTTP 200 OK` in 2.21s, returning all events with `eventId > 350`.
 3. **Event Deduplication:** Client-side sliding window of 1,000 event IDs prevents duplicate processing or duplicate toast notifications during network re-connections.
 4. **Fallback Polling:** In offline or restricted network environments where SSE streaming is blocked, fallback polling activates automatically every 15 seconds to sync state.
+
