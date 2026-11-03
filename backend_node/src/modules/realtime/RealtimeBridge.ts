@@ -120,3 +120,4 @@ export class RealtimeBridge {
     logger.info('PostgreSQL Realtime Bridge stopped');
   }
 }
+

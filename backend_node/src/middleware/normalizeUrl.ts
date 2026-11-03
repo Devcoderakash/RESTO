@@ -8,3 +8,4 @@ export function normalizeUrl(req: Request, _res: Response, next: NextFunction): 
   }
   next();
 }
+

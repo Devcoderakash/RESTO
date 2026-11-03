@@ -84,11 +84,14 @@ export function setupTestDatabase() {
       description TEXT,
       price NUMERIC(10,2) NOT NULL,
       image_url TEXT,
-      is_vegetarian BOOLEAN NOT NULL DEFAULT true,
-      is_available BOOLEAN NOT NULL DEFAULT true,
-      spiciness_level INTEGER NOT NULL DEFAULT 0,
+      food_type VARCHAR(20) NOT NULL DEFAULT 'veg',
+      available BOOLEAN NOT NULL DEFAULT true,
+      popular BOOLEAN NOT NULL DEFAULT false,
+      chef_special BOOLEAN NOT NULL DEFAULT false,
+      sort_order INTEGER NOT NULL DEFAULT 0,
       preparation_time_minutes INTEGER NOT NULL DEFAULT 15,
       allergens TEXT[] DEFAULT '{}',
+      dietary_tags TEXT[] DEFAULT '{}',
       created_at TIMESTAMP NOT NULL DEFAULT clock_timestamp(),
       updated_at TIMESTAMP NOT NULL DEFAULT clock_timestamp()
     );
@@ -201,14 +204,15 @@ export function setupTestDatabase() {
       ('cat-pizzas', 'rest-olive-ember-01', 'Wood-fired Pizzas', 1, true),
       ('cat-desserts', 'rest-olive-ember-01', 'Artisanal Desserts', 2, true);
 
-    INSERT INTO resto_v2.menu_items (id, restaurant_id, category_id, name, price, is_available, is_vegetarian)
+    INSERT INTO resto_v2.menu_items (id, restaurant_id, category_id, name, price, available, food_type)
     VALUES 
-      ('item-pizza-01', 'rest-olive-ember-01', 'cat-pizzas', 'Truffle Mushroom Pizza', 480.00, true, true),
-      ('item-dessert-01', 'rest-olive-ember-01', 'cat-desserts', 'Classic Tiramisu', 250.00, true, true);
+      ('item-pizza-01', 'rest-olive-ember-01', 'cat-pizzas', 'Truffle Mushroom Pizza', 480.00, true, 'veg'),
+      ('item-dessert-01', 'rest-olive-ember-01', 'cat-desserts', 'Classic Tiramisu', 250.00, true, 'veg');
 
     INSERT INTO resto_v2.staff (id, restaurant_id, full_name, email, role, is_active)
     VALUES 
       ('staff-manager-01', 'rest-olive-ember-01', 'Restaurant Manager', 'manager@oliveandember.com', 'manager', true),
+      ('staff-contact-01', 'rest-olive-ember-01', 'Restaurant Concierge', 'contact@oliveandember.com', 'manager', true),
       ('staff-chef-01', 'rest-olive-ember-01', 'Executive Chef', 'chef@oliveandember.com', 'chef', true),
       ('staff-waiter-01', 'rest-olive-ember-01', 'Floor Waiter', 'waiter@oliveandember.com', 'waiter', true);
 
@@ -239,3 +243,4 @@ export function setupTestDatabase() {
 
   return { db, pool };
 }
+

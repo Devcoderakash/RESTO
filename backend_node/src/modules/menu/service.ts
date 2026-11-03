@@ -19,7 +19,7 @@ export class MenuService {
       .filter((c) => c.is_visible)
       .map((cat) => {
         const catItems = items
-          .filter((i) => i.category_id === cat.id && i.is_available)
+          .filter((i) => i.category_id === cat.id && (i.available ?? true))
           .map((i) => this.formatItem(i));
         return {
           id: cat.id,
@@ -66,6 +66,10 @@ export class MenuService {
     }
 
     const id = `item-${randomUUID().substring(0, 12)}`;
+    const isVeg = data.is_vegetarian ?? data.isVegetarian ?? (data.food_type === 'non_veg' ? false : true);
+    const isAvail = data.is_available ?? data.isAvailable ?? data.available ?? true;
+    const foodType = data.food_type || (isVeg ? 'veg' : 'non_veg');
+
     const created = await this.menuRepo.create({
       id,
       restaurantId,
@@ -74,8 +78,9 @@ export class MenuService {
       description: data.description,
       price,
       imageUrl: data.image_url || data.imageUrl,
-      isVegetarian: data.is_vegetarian ?? data.isVegetarian ?? true,
-      isAvailable: data.is_available ?? data.isAvailable ?? true,
+      foodType,
+      isVegetarian: isVeg,
+      available: isAvail,
     });
 
     const formatted = this.formatItem(created);
@@ -94,14 +99,19 @@ export class MenuService {
     const existing = await this.menuRepo.findById(id);
     if (!existing) throw new NotFoundError(`Menu item '${id}' not found`);
 
+    const isVeg = updates.is_vegetarian ?? updates.isVegetarian;
+    const isAvail = updates.is_available ?? updates.isAvailable ?? updates.available;
+    const foodType = updates.food_type ?? (isVeg !== undefined ? (isVeg ? 'veg' : 'non_veg') : undefined);
+
     const updated = await this.menuRepo.update(id, {
       name: updates.name,
       description: updates.description,
       price: updates.price !== undefined ? Number(updates.price) : undefined,
       categoryId: updates.category_id || updates.categoryId,
       imageUrl: updates.image_url || updates.imageUrl,
-      isVegetarian: updates.is_vegetarian ?? updates.isVegetarian,
-      isAvailable: updates.is_available ?? updates.isAvailable,
+      foodType,
+      isVegetarian: isVeg,
+      available: isAvail,
     });
 
     const formatted = this.formatItem(updated!);
@@ -152,6 +162,8 @@ export class MenuService {
 
   private formatItem(i: MenuItemRow) {
     const priceNum = Number(i.price);
+    const isVeg = i.food_type === 'veg';
+    const isAvail = i.available ?? true;
     return {
       id: i.id,
       restaurantId: i.restaurant_id,
@@ -159,21 +171,30 @@ export class MenuService {
       categoryId: i.category_id,
       category_id: i.category_id,
       name: i.name,
-      description: i.description,
+      description: i.description || '',
       price: priceNum,
-      imageUrl: i.image_url,
-      image_url: i.image_url,
-      isVegetarian: i.is_vegetarian,
-      is_vegetarian: i.is_vegetarian,
-      isAvailable: i.is_available,
-      is_available: i.is_available,
-      spicinessLevel: i.spiciness_level,
-      spiciness_level: i.spiciness_level,
-      preparationTimeMinutes: i.preparation_time_minutes,
-      preparation_time_minutes: i.preparation_time_minutes,
+      imageUrl: i.image_url || '',
+      image_url: i.image_url || '',
+      foodType: i.food_type || 'veg',
+      food_type: i.food_type || 'veg',
+      isVegetarian: isVeg,
+      is_vegetarian: isVeg,
+      available: isAvail,
+      isAvailable: isAvail,
+      is_available: isAvail,
+      popular: i.popular ?? false,
+      chefSpecial: i.chef_special ?? false,
+      chef_special: i.chef_special ?? false,
+      spicinessLevel: (i as any).spiciness_level ?? 0,
+      spiciness_level: (i as any).spiciness_level ?? 0,
+      preparationTimeMinutes: i.preparation_time_minutes ?? 15,
+      preparation_time_minutes: i.preparation_time_minutes ?? 15,
       allergens: i.allergens || [],
+      dietaryTags: i.dietary_tags || [],
+      dietary_tags: i.dietary_tags || [],
       createdAt: i.created_at,
       created_at: i.created_at,
     };
   }
 }
+

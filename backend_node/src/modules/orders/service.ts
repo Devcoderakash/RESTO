@@ -89,7 +89,7 @@ export class OrderService {
       if (!menuItem) {
         throw new BadRequestError(`Menu item '${requested.id}' not found`);
       }
-      if (!menuItem.is_available) {
+      if (menuItem.available === false || (menuItem as any).is_available === false) {
         throw new BadRequestError(`Menu item '${menuItem.name}' is currently unavailable`);
       }
 
@@ -320,3 +320,4 @@ export class OrderService {
     };
   }
 }
+

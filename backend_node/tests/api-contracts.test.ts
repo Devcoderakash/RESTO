@@ -2,11 +2,19 @@ import http from 'http';
 import { describe, it, expect, beforeEach } from 'vitest';
 import request from 'supertest';
 import { createApp } from '../src/app.js';
+import { signStaffToken } from '../src/utils/jwt.js';
 import { setupTestDatabase } from './setupTestDb.js';
 
 describe('RESTO V2 Comprehensive 45-Endpoint API Contract Test Suite', () => {
   const app = createApp();
-  const staffAuth = 'Bearer demo-staff-token-manager';
+  const testToken = signStaffToken({
+    id: 'staff-manager-01',
+    email: 'manager@oliveandember.com',
+    name: 'Restaurant Manager',
+    role: 'manager',
+    restaurantId: 'rest-olive-ember-01',
+  });
+  const staffAuth = `Bearer ${testToken}`;
 
   beforeEach(() => {
     setupTestDatabase();

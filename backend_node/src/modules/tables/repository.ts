@@ -102,3 +102,4 @@ export class TableRepository {
     return (res.rowCount ?? 0) > 0;
   }
 }
+

@@ -116,3 +116,4 @@ export class RestaurantRepository {
     return this.getSettings(restaurantId);
   }
 }
+

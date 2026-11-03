@@ -29,3 +29,4 @@ export interface SSEClient {
   connectedAt: Date;
   lastEventId: number;
 }
+

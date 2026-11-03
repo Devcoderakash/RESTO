@@ -68,3 +68,4 @@ export class StaffRepository {
     return res.rows[0] || null;
   }
 }
+

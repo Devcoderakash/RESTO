@@ -19,6 +19,10 @@ const envSchema = z.object({
   SUPABASE_STORAGE_BUCKET: z.string().default('resto-media'),
   TRACKING_TOKEN_SECRET: z.string().default('resto-demo-tracking-token-secret-2026'),
   STAFF_JWT_SECRET: z.string().default('resto-demo-staff-jwt-secret-2026'),
+  JWT_ISSUER: z.string().default('resto-backend'),
+  JWT_AUDIENCE: z.string().default('resto-dashboard'),
+  JWT_EXPIRY: z.string().default('24h'),
+  ALLOW_DEMO_AUTH: z.coerce.boolean().default(false),
   CLIENT_ORIGINS: z.string().default('http://localhost:5173,http://localhost:5174'),
   SSE_HEARTBEAT_INTERVAL_MS: z.coerce.number().default(5000),
   SSE_MAX_STREAM_DURATION_MS: z.coerce.number().default(20000),
@@ -36,3 +40,4 @@ function parseEnv(): EnvConfig {
 }
 
 export const env = parseEnv();
+

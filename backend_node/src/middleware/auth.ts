@@ -1,5 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
+import { env } from '../config/env.js';
 import { UnauthorizedError } from '../utils/errors.js';
+import { verifyStaffToken } from '../utils/jwt.js';
+import { logger } from '../utils/logger.js';
 
 export interface AuthenticatedStaff {
   id: string;
@@ -39,8 +42,42 @@ export function requireStaffAuth(req: Request, _res: Response, next: NextFunctio
 
   const token = authHeader.split(' ')[1];
 
-  // Demo tokens or JWT support
-  if (token === 'demo-staff-token-manager' || token.startsWith('staff-token-manager') || token === 'demo-staff-token') {
+  const isDemoToken =
+    token.startsWith('demo-staff-') ||
+    token === 'demo-staff-token' ||
+    token === 'demo-staff-token-manager' ||
+    token === 'demo-staff-token-chef' ||
+    token === 'demo-staff-token-waiter';
+
+  // 1. In Production, reject ALL demo tokens unconditionally
+  if (isDemoToken) {
+    if (env.NODE_ENV === 'production' || !env.ALLOW_DEMO_AUTH) {
+      logger.warn({ token: token.slice(0, 10) }, 'Rejected demo token in production / secure mode');
+      throw new UnauthorizedError('Demo authentication is strictly disabled in production. Cryptographically verified JWT required.');
+    }
+
+    // Explicit local development fallback only
+    logger.debug({ token }, 'Permitting demo staff token in explicit development mode');
+    if (token === 'demo-staff-token-chef') {
+      req.staff = {
+        id: 'staff-chef-01',
+        email: 'chef@oliveandember.com',
+        name: 'Executive Chef',
+        role: 'chef',
+        restaurantId: req.restaurantId || DEFAULT_RESTAURANT_ID,
+      };
+      return next();
+    }
+    if (token === 'demo-staff-token-waiter') {
+      req.staff = {
+        id: 'staff-waiter-01',
+        email: 'waiter@oliveandember.com',
+        name: 'Floor Waiter',
+        role: 'waiter',
+        restaurantId: req.restaurantId || DEFAULT_RESTAURANT_ID,
+      };
+      return next();
+    }
     req.staff = {
       id: 'staff-manager-01',
       email: 'manager@oliveandember.com',
@@ -51,41 +88,17 @@ export function requireStaffAuth(req: Request, _res: Response, next: NextFunctio
     return next();
   }
 
-  if (token === 'demo-staff-token-chef' || token.startsWith('staff-token-chef')) {
-    req.staff = {
-      id: 'staff-chef-01',
-      email: 'chef@oliveandember.com',
-      name: 'Executive Chef',
-      role: 'chef',
-      restaurantId: req.restaurantId || DEFAULT_RESTAURANT_ID,
-    };
-    return next();
-  }
-
-  if (token === 'demo-staff-token-waiter' || token.startsWith('staff-token-waiter')) {
-    req.staff = {
-      id: 'staff-waiter-01',
-      email: 'waiter@oliveandember.com',
-      name: 'Floor Waiter',
-      role: 'waiter',
-      restaurantId: req.restaurantId || DEFAULT_RESTAURANT_ID,
-    };
-    return next();
-  }
-
-  // Generic valid token acceptance for authenticated staff
-  if (token.startsWith('staff-token-') || token.startsWith('resto-staff-')) {
-    req.staff = {
-      id: 'staff-authenticated-01',
-      email: (req.headers['x-staff-email'] as string) || 'contact@oliveandember.com',
-      name: 'Staff Member',
-      role: 'manager',
-      restaurantId: req.restaurantId || DEFAULT_RESTAURANT_ID,
-    };
-    return next();
-  }
-
-  throw new UnauthorizedError('Invalid or expired staff token');
+  // 2. Cryptographic JWT Verification
+  const decoded = verifyStaffToken(token);
+  req.staff = {
+    id: decoded.sub,
+    email: decoded.email,
+    name: decoded.name,
+    role: decoded.role,
+    restaurantId: decoded.restaurantId,
+  };
+  req.restaurantId = decoded.restaurantId;
+  next();
 }
 
 export function optionalStaffAuth(req: Request, _res: Response, next: NextFunction): void {

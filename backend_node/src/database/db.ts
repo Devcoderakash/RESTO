@@ -88,3 +88,4 @@ export async function closePool(): Promise<void> {
     logger.info('Database pool closed gracefully');
   }
 }
+

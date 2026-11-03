@@ -186,3 +186,4 @@ export class OrderRepository {
     return Number(res.rows[0]?.count || 0);
   }
 }
+

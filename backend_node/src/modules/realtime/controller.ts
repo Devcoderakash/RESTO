@@ -93,3 +93,4 @@ export async function syncMissedEvents(req: Request, res: Response, next: NextFu
     next(error);
   }
 }
+

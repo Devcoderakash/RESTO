@@ -5,14 +5,16 @@ export interface MenuItemRow {
   restaurant_id: string;
   category_id: string;
   name: string;
-  description: string | null;
+  description: string;
   price: string | number;
-  image_url: string | null;
-  is_vegetarian: boolean;
-  is_available: boolean;
-  spiciness_level: number;
+  image_url: string;
+  food_type: 'veg' | 'non_veg';
+  dietary_tags: any;
+  available: boolean;
+  popular: boolean;
+  chef_special: boolean;
   preparation_time_minutes: number;
-  allergens: string[];
+  allergens: any;
   created_at: string;
   updated_at: string;
 }
@@ -22,7 +24,7 @@ export class MenuItemRepository {
     const res = await query<MenuItemRow>(
       `SELECT * FROM resto_v2.menu_items
        WHERE restaurant_id = $1
-       ORDER BY name ASC;`,
+       ORDER BY sort_order ASC, name ASC;`,
       [restaurantId]
     );
     return res.rows;
@@ -44,25 +46,29 @@ export class MenuItemRepository {
     description?: string;
     price: number;
     imageUrl?: string;
+    foodType?: 'veg' | 'non_veg';
     isVegetarian?: boolean;
-    isAvailable?: boolean;
+    available?: boolean;
   }): Promise<MenuItemRow> {
+    const foodType = data.foodType || (data.isVegetarian === false ? 'non_veg' : 'veg');
+    const isAvail = data.available ?? true;
+
     const res = await query<MenuItemRow>(
       `INSERT INTO resto_v2.menu_items (
         id, restaurant_id, category_id, name, description, price, image_url,
-        is_vegetarian, is_available
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, COALESCE($8, true), COALESCE($9, true))
+        food_type, available
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
       RETURNING *;`,
       [
         data.id,
         data.restaurantId,
         data.categoryId,
         data.name,
-        data.description || null,
+        data.description || '',
         data.price,
-        data.imageUrl || null,
-        data.isVegetarian ?? true,
-        data.isAvailable ?? true,
+        data.imageUrl || '',
+        foodType,
+        isAvail,
       ]
     );
     return res.rows[0];
@@ -76,10 +82,16 @@ export class MenuItemRepository {
       price?: number;
       categoryId?: string;
       imageUrl?: string;
+      foodType?: 'veg' | 'non_veg';
       isVegetarian?: boolean;
-      isAvailable?: boolean;
+      available?: boolean;
     }
   ): Promise<MenuItemRow | null> {
+    let foodType = updates.foodType;
+    if (foodType === undefined && updates.isVegetarian !== undefined) {
+      foodType = updates.isVegetarian ? 'veg' : 'non_veg';
+    }
+
     const res = await query<MenuItemRow>(
       `UPDATE resto_v2.menu_items
        SET name = COALESCE($2, name),
@@ -87,8 +99,8 @@ export class MenuItemRepository {
            price = COALESCE($4, price),
            category_id = COALESCE($5, category_id),
            image_url = COALESCE($6, image_url),
-           is_vegetarian = COALESCE($7, is_vegetarian),
-           is_available = COALESCE($8, is_available),
+           food_type = COALESCE($7, food_type),
+           available = COALESCE($8, available),
            updated_at = clock_timestamp()
        WHERE id = $1
        RETURNING *;`,
@@ -99,8 +111,8 @@ export class MenuItemRepository {
         updates.price ?? null,
         updates.categoryId ?? null,
         updates.imageUrl ?? null,
-        updates.isVegetarian ?? null,
-        updates.isAvailable ?? null,
+        foodType ?? null,
+        updates.available ?? null,
       ]
     );
     return res.rows[0] || null;
@@ -109,7 +121,7 @@ export class MenuItemRepository {
   public async setAvailability(id: string, isAvailable: boolean): Promise<MenuItemRow | null> {
     const res = await query<MenuItemRow>(
       `UPDATE resto_v2.menu_items
-       SET is_available = $2, updated_at = clock_timestamp()
+       SET available = $2, updated_at = clock_timestamp()
        WHERE id = $1
        RETURNING *;`,
       [id, isAvailable]

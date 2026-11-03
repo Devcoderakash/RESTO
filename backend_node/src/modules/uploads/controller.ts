@@ -34,3 +34,4 @@ export async function uploadMenuImage(req: Request, res: Response, next: NextFun
     next(error);
   }
 }
+

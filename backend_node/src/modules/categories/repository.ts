@@ -78,3 +78,4 @@ export class CategoryRepository {
     return (res.rowCount ?? 0) > 0;
   }
 }
+

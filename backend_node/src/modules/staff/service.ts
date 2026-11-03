@@ -1,5 +1,7 @@
 import { randomUUID } from 'crypto';
+import { env } from '../../config/env.js';
 import { BadRequestError, NotFoundError, UnauthorizedError } from '../../utils/errors.js';
+import { signStaffToken } from '../../utils/jwt.js';
 import { StaffRepository, StaffRow } from './repository.js';
 
 export class StaffService {
@@ -46,30 +48,46 @@ export class StaffService {
 
     let staff = await this.repo.findByEmail(email);
     if (!staff) {
-      // Allow demo staff login gracefully
-      if (email.includes('oliveandember.com') || email === 'contact@oliveandember.com') {
+      // In development mode only, allow fallback staff demo login
+      if (env.NODE_ENV !== 'production' && env.ALLOW_DEMO_AUTH && email.includes('oliveandember.com')) {
+        const demoStaff = {
+          id: 'staff-manager-01',
+          email,
+          name: 'Restaurant Manager',
+          role: 'manager' as const,
+          restaurantId: 'rest-olive-ember-01',
+        };
+        const token = signStaffToken(demoStaff);
         return {
-          accessToken: 'demo-staff-token-manager',
-          refreshToken: 'demo-staff-refresh-token',
+          accessToken: token,
+          refreshToken: `refresh-${randomUUID()}`,
           expiresAt: Math.floor(Date.now() / 1000) + 86400,
           user: {
-            id: 'staff-manager-01',
-            email,
-            name: 'Restaurant Manager',
-            role: 'manager',
+            id: demoStaff.id,
+            email: demoStaff.email,
+            name: demoStaff.name,
+            role: demoStaff.role,
           },
         };
       }
-      throw new UnauthorizedError('Invalid credentials');
+      throw new UnauthorizedError('Invalid email or password');
     }
 
     if (!staff.is_active) {
       throw new UnauthorizedError('Staff account is deactivated');
     }
 
+    const token = signStaffToken({
+      id: staff.id,
+      email: staff.email,
+      name: staff.full_name,
+      role: staff.role,
+      restaurantId: staff.restaurant_id,
+    });
+
     return {
-      accessToken: `staff-token-${staff.role}-${staff.id}`,
-      refreshToken: `staff-refresh-${staff.id}`,
+      accessToken: token,
+      refreshToken: `refresh-${staff.id}-${randomUUID().slice(0, 8)}`,
       expiresAt: Math.floor(Date.now() / 1000) + 86400,
       user: {
         id: staff.id,
@@ -108,3 +126,4 @@ export class StaffService {
     };
   }
 }
+
