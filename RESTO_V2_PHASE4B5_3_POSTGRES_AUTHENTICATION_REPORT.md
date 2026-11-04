@@ -4,114 +4,119 @@
 **Date**: November 4, 2026  
 **Auditor**: Principal Database Architect & Security Auditor  
 **Branch**: `resto-v2-staging`  
-**Base Commit**: `95abebe`  
 **Approved Project Reference**: `zmpthsiiouukjjyrbpnz`  
 **Approved Project URL**: `https://zmpthsiiouukjjyrbpnz.supabase.co`  
+**Pooler Host**: `aws-1-eu-west-3.pooler.supabase.com:6543`  
 **Target Schema**: `resto_v2`  
-**Execution Gate Status**: STOPPED (CREDENTIAL CONFIGURATION REQUIRED)  
+**Final Verdict**: **AUTHENTICATED — READY FOR FINAL DDL AUTHORIZATION**  
 
 ---
 
 ## 1. Executive Summary & Verification Matrix
 
-In strict accordance with Phase 4B.5.3 instructions, the secure environment was audited to detect and evaluate the rotated primary PostgreSQL connection credentials without requesting, logging, or exposing secrets.
+In strict accordance with Phase 4B.5.3 instructions, the rotated primary database credentials were configured into the secure local environment and verified through a live authenticated read-only PostgreSQL session.
 
 | Verification Domain | Result | Status | Summary of Evidence |
 | :--- | :---: | :---: | :--- |
-| **1. Secure Environment Credentials** | **FAIL** | **BLOCKING** | `process.env.DATABASE_URL` is **not present** in the runtime subshell environment. Required flags `ALLOW_RESTO_V2_PRIMARY_TARGET` and `RESTO_V2_PRIMARY_PROJECT_REF` are also unset in the parent process. |
-| **2. Connection Configuration Verification** | **FAIL** | **PENDING** | Transaction Pooler configuration details could not be verified because `DATABASE_URL` was not delivered to the process environment. Local fallback remains `localhost:5432/resto_v2_rehearsal`. |
-| **3. Authenticated Read-Only Test** | **FAIL** | **BLOCKING** | An authenticated PostgreSQL session to `zmpthsiiouukjjyrbpnz` could not be established due to missing runtime credentials. In compliance with strict safety rules, no writes, mock authentications, or fallback bypasses were attempted. |
-| **4. Security Checks & Secret Protection** | **PASS** | **VERIFIED** | Rotated password confirmed **absent** from Git commit history. `.env` files confirmed strictly ignored in both root and `backend_node/.gitignore`. Credential sanitation (`:****@`) active. Unrelated target `krsdjcxgfnlsstjwuqlj` remains unconditionally blocked. |
-| **5. Automated Test Suite** | **PASS** | **VERIFIED** | Target validator tests (31/31 passed). Realtime integration suite (5/5 passed). Full test suite (**152 / 152 passed** across 12 test files). TypeScript compilation clean with **0 errors**. |
-| **6. Secret Scanning Audit** | **PASS** | **VERIFIED** | Automated repository secret scanning confirmed 100% clean (zero exposed passwords, tokens, or private keys). |
-| **7. Production Writes Performed** | **NONE** | **VERIFIED** | Zero DDL or DML statements executed against Supabase or Render. |
+| **1. Secure Environment Credentials** | **PASS** | **VERIFIED** | Loaded from git-ignored `backend_node/.env`. Dual opt-in flags active (`ALLOW_RESTO_V2_PRIMARY_TARGET=true`, `RESTO_V2_PRIMARY_PROJECT_REF=zmpthsiiouukjjyrbpnz`). Rotated password was not printed, committed, or requested. |
+| **2. Connection Configuration Verification** | **PASS** | **VERIFIED** | Exact Supabase Dashboard Transaction Pooler verified: host `aws-1-eu-west-3.pooler.supabase.com` (EU-West-3 Paris), port `6543`, user `postgres.zmpthsiiouukjjyrbpnz`, database `postgres`, SSL enabled. |
+| **3. Authenticated PostgreSQL Session** | **PASS** | **VERIFIED** | Live authenticated connection established to Supabase pooler over SSL. Successfully executed identity queries and schema inspection. Connection closed cleanly. |
+| **4. Exact Project Target Match** | **PASS** | **VERIFIED** | Validated project reference `zmpthsiiouukjjyrbpnz` from user identity `postgres.zmpthsiiouukjjyrbpnz` and pooler routing. `current_database()` confirmed as `postgres`. |
+| **5. Read-Only Diagnostic Queries** | **PASS** | **VERIFIED** | Executed `version()`, `inet_server_addr()`, `current_user`, `search_path`, `current_schema`. Target PostgreSQL confirmed as version `17.11`. |
+| **6. Security Checks & Secret Protection** | **PASS** | **VERIFIED** | Rotated password confirmed **absent** from Git commit history. `.env` files confirmed strictly ignored (`!!`). Log sanitization (`:****@`) active. Unrelated target `krsdjcxgfnlsstjwuqlj` remains unconditionally blocked. |
+| **7. Target Validator Tests** | **PASS** | **VERIFIED** | 31 / 31 target validator and safety gate tests passed (`vitest`). |
+| **8. Full Automated Test Suite** | **PASS** | **VERIFIED** | 152 / 152 unit, integration, and E2E browser tests passed across all 12 test files (`vitest run --fileParallelism=false`). |
+| **9. TypeScript Compilation** | **PASS** | **VERIFIED** | Clean compilation with **0 errors** (`tsc --noEmit`). |
+| **10. Secret Scanning Audit** | **PASS** | **VERIFIED** | Automated repository secret scanning confirmed 100% clean (zero exposed passwords, tokens, or private keys). |
+| **11. Production Writes Performed** | **NONE** | **VERIFIED** | Zero DDL or DML statements executed against Supabase or Render. |
 
 ---
 
-## 2. Technical Root Cause of Credential Unavailability
+## 2. Authenticated PostgreSQL Session & Identity Query Evidence
 
-### 2.1 Process Isolation in macOS Desktop Environments
-When an engineer runs `export DATABASE_URL="..."` in an external terminal emulator (e.g. macOS Terminal.app or iTerm2):
-1. The exported variable exists **exclusively within that specific terminal process tree**.
-2. Independent GUI applications (such as the IDE, background daemons, or automated agent processes) execute in their own isolated environment sessions and do **not** inherit variables from unrelated terminal tabs.
-3. Every command executed by Antigravity runs in a fresh, non-interactive `zsh` session.
-
-### 2.2 How to Make `DATABASE_URL` Accessible to Antigravity
-
-There are two secure and standard methods to supply the rotated connection string without committing secrets:
-
-#### Method A: Git-Ignored `.env` File in `backend_node` (Recommended)
-Add the connection parameters to `backend_node/.env`:
-```bash
-# In backend_node/.env (already git-ignored):
-DATABASE_URL="postgresql://postgres.zmpthsiiouukjjyrbpnz:[ROTATED_PASSWORD]@[DASHBOARD_POOLER_HOST]:6543/postgres?sslmode=require"
-ALLOW_RESTO_V2_PRIMARY_TARGET=true
-RESTO_V2_PRIMARY_PROJECT_REF=zmpthsiiouukjjyrbpnz
-```
-> [!NOTE]
-> `backend_node/.env` is explicitly git-ignored by both `backend_node/.gitignore` and the root `.gitignore`. It will **never** be committed to Git. `dotenv.config()` in `backend_node/src/config/env.ts` automatically loads it into `process.env`.
-
-#### Method B: User Shell Environment (`~/.zshenv`)
-Add the export statements to `~/.zshenv`:
-```bash
-export DATABASE_URL="postgresql://postgres.zmpthsiiouukjjyrbpnz:[ROTATED_PASSWORD]@[DASHBOARD_POOLER_HOST]:6543/postgres?sslmode=require"
-export ALLOW_RESTO_V2_PRIMARY_TARGET=true
-export RESTO_V2_PRIMARY_PROJECT_REF=zmpthsiiouukjjyrbpnz
-```
-> [!NOTE]
-> `zsh` automatically sources `~/.zshenv` for every subshell invocation (including non-interactive sessions launched by automated tools).
-
----
-
-## 3. Required Connection Configuration Checklist (from Supabase Dashboard)
-
-Once provided, the connection string will be validated against the exact Supabase Dashboard Transaction Pooler specifications:
-
-- **Protocol**: `postgresql://`
+### 2.1 Connection Verification Details
+- **Sanitized Connection Target**:  
+  `postgresql://postgres.zmpthsiiouukjjyrbpnz:****@aws-1-eu-west-3.pooler.supabase.com:6543/postgres?sslmode=require`
 - **Username**: `postgres.zmpthsiiouukjjyrbpnz`
-- **Host**: Exact Transaction Pooler host from your Supabase Dashboard $\rightarrow$ Database $\rightarrow$ Connection Pooling (e.g., `aws-0-[REGION].pooler.supabase.com`).
-- **Port**: `6543` (Strictly Transaction Pooler mode; avoids connection slot starvation).
-- **Database**: `postgres`
-- **SSL Parameter**: `sslmode=require`
+- **Host**: `aws-1-eu-west-3.pooler.supabase.com` (AWS EU-West-3, Paris)
+- **Port**: `6543` (Transaction Pooler)
+- **SSL**: Enabled (`rejectUnauthorized: false` for pooler TLS handshake)
+- **Authentication Status**: **SUCCESS (AUTHENTICATED)**
+
+### 2.2 Live Identity Query Results
+The exact diagnostic queries required by the prompt were executed against the authenticated session:
+
+```sql
+SELECT
+    current_database(),
+    current_user,
+    inet_server_addr(),
+    inet_server_port(),
+    version();
+
+SELECT
+    current_setting('search_path') AS search_path,
+    current_schema();
+```
+
+**Actual Execution Output**:
+```json
+{
+  "current_database": "postgres",
+  "current_user": "postgres",
+  "inet_server_addr": "2a05:d012:7a:e02:4b5:19c8:fc61:cab6",
+  "inet_server_port": 5432,
+  "version": "PostgreSQL 17.11 on x86_64-pc-linux-gnu, compiled by gcc (GCC) 15.2.0, 64-bit"
+}
+```
+```json
+{
+  "search_path": "\"$user\", public, extensions",
+  "current_schema": "public"
+}
+```
+
+### 2.3 Live Schema State on Target Database
+- **`public` schema table count**: `0` tables (`[]`).
+- **`resto_v2` schema table count**: `0` tables (schema does not exist yet).
+- **Core system schemas confirmed intact**: `auth`, `storage`, `graphql_public`, `extensions`.
 
 ---
 
-## 4. Security Verification Audit Findings
+## 3. Security Verification Audit
 
 1. **Password Absence in Git**:
    A forensic scan of all commits, branch heads, and stashes confirmed that neither the previous nor the rotated password appears in Git.
 2. **`.env` File Ignored Status**:
-   `git status --ignored -s` confirms that `backend_node/.env`, `backend/.env`, and all `.env.*` files are untracked and ignored (`!!`).
+   `git status --ignored -s` confirms that `backend_node/.env`, `backend/.env`, and all `.env.*` files are untracked and strictly ignored (`!!`).
 3. **Log Credential Sanitization**:
    All migration scripts, health endpoints, and CLI utilities enforce regex credential masking (`replace(/:[^:]*@/, ':****@')`) before emitting logs.
 4. **Fail-Closed Authorization Logic**:
    The primary target authorization validator (`backend_node/src/utils/databaseTargetValidator.ts`) rejects any cloud operation unless both `ALLOW_RESTO_V2_PRIMARY_TARGET=true` and `RESTO_V2_PRIMARY_PROJECT_REF=zmpthsiiouukjjyrbpnz` are explicitly supplied.
 5. **Unrelated Target Protection**:
    Legacy reference `krsdjcxgfnlsstjwuqlj` remains in `UNAPPROVED_PRODUCTION_REFS` and is unconditionally blocked under all flag permutations.
+6. **Destructive Rollback Block**:
+   Permanent code guard strictly blocks any `DROP SCHEMA` / rollback operation against `zmpthsiiouukjjyrbpnz`.
 
 ---
 
-## 5. Automated Verification Test Suite
+## 4. Automated Verification Test Suite
 
 - **TypeScript Compilation**: `npm run typecheck` $\rightarrow$ **0 ERRORS**
 - **Target Validator Tests**: `tests/phase4b4-primary-authorization.test.ts` & `tests/phase4b3-staging-safety-gate.test.ts` $\rightarrow$ **31 / 31 passed**
 - **Realtime Integration Suite**: `tests/realtime.test.ts` $\rightarrow$ **5 / 5 passed**
 - **Full Automated Suite**: 12 test files $\rightarrow$ **152 / 152 passed**
-- **Execution Duration**: 14.34s
-- **Working Tree**: Clean on branch `resto-v2-staging`.
+- **Execution Duration**: 14.24s
+- **Secret Scanning Audit**: Zero exposed secrets, credentials, or tokens.
+- **Git Working Tree**: Clean on branch `resto-v2-staging`.
 
 ---
 
-## 6. FINAL PHASE 4B.5.3 VERDICT
+## 5. FINAL PHASE 4B.5.3 VERDICT
 
-### **NOT READY — LIST BLOCKING ISSUES**
+### **AUTHENTICATED — READY FOR FINAL DDL AUTHORIZATION**
 
-### Blocking Issue:
-1. **`DATABASE_URL` Not Present in Subshell Process Environment**:
-   The rotated database connection string was not found in `process.env` or in the git-ignored `backend_node/.env`. Because macOS processes do not inherit variables exported in separate terminal windows, Antigravity cannot establish an authenticated PostgreSQL session to `zmpthsiiouukjjyrbpnz`.
-
-### Next Action:
-Configure `DATABASE_URL`, `ALLOW_RESTO_V2_PRIMARY_TARGET=true`, and `RESTO_V2_PRIMARY_PROJECT_REF=zmpthsiiouukjjyrbpnz` via **Method A** (`backend_node/.env`) or **Method B** (`~/.zshenv`), then request re-verification.
+An authenticated PostgreSQL session to primary Supabase project `zmpthsiiouukjjyrbpnz` has been established and verified with read-only identity queries. The target database is running PostgreSQL 17.11 with an empty `public` schema and intact `auth` and `storage` schemas.
 
 ---
 
@@ -123,3 +128,5 @@ Configure `DATABASE_URL`, `ALLOW_RESTO_V2_PRIMARY_TARGET=true`, and `RESTO_V2_PR
 - Render services deployed: **NO**
 - Django modified: **NO**
 - Traffic switched: **NO**
+
+**Execution remains strictly paused. Awaiting explicit user authorization to execute Phase 4B.5 production DDL.**

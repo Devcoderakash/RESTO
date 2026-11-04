@@ -1,10 +1,13 @@
 import fs from 'fs';
 import path from 'path';
 import pg from 'pg';
+import dotenv from 'dotenv';
 import {
   validateDatabaseTarget,
   validateRollbackAuthorization,
 } from '../utils/databaseTargetValidator.js';
+
+dotenv.config();
 
 const { Pool } = pg;
 
@@ -56,7 +59,13 @@ export async function applyMigrations(options: ApplyMigrationsOptions): Promise<
     });
   }
 
-  const pool = new Pool({ connectionString: options.connectionString });
+  const isLocal =
+    options.connectionString.includes('localhost') ||
+    options.connectionString.includes('127.0.0.1');
+  const pool = new Pool({
+    connectionString: options.connectionString.split('?')[0],
+    ssl: isLocal ? false : { rejectUnauthorized: false },
+  });
   const client = await pool.connect();
 
   const migrationsDir = path.resolve(process.cwd(), 'migrations');

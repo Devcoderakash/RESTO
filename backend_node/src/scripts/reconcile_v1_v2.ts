@@ -2,7 +2,10 @@ import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 import pg from 'pg';
+import dotenv from 'dotenv';
 import { validateDatabaseTarget } from '../utils/databaseTargetValidator.js';
+
+dotenv.config();
 
 const { Pool } = pg;
 
@@ -27,7 +30,13 @@ export async function runReconciliation(options: {
   });
 
   const schema = options.schema || 'resto_v2';
-  const pool = new Pool({ connectionString: options.connectionString });
+  const isLocal =
+    options.connectionString.includes('localhost') ||
+    options.connectionString.includes('127.0.0.1');
+  const pool = new Pool({
+    connectionString: options.connectionString.split('?')[0],
+    ssl: isLocal ? false : { rejectUnauthorized: false },
+  });
   const client = await pool.connect();
 
   let backupFilePath = options.backupFilePath;

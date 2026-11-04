@@ -19,6 +19,8 @@ describe('RESTO V2 — Phase 4B.3 Staging Provisioning Safety Gate Suite', () =>
     delete process.env.CONFIRM_STAGING_ROLLBACK;
     delete process.env.CONFIRM_STAGING_ROLLBACK_PROJECT_REF;
     delete process.env.ALLOW_LOCAL_TARGET;
+    delete process.env.ALLOW_RESTO_V2_PRIMARY_TARGET;
+    delete process.env.RESTO_V2_PRIMARY_PROJECT_REF;
   });
 
   afterEach(() => {
