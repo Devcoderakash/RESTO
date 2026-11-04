@@ -1,0 +1,94 @@
+# =====================================================================
+# RESTO V2 — RENDER CLOUD STAGING INFRASTRUCTURE BLUEPRINT
+# File: render.staging.yaml
+# Dedicated Staging Environment (Zero collision with production services)
+# =====================================================================
+
+services:
+  # -------------------------------------------------------------------
+  # 1. Staging Node.js Backend Service
+  # -------------------------------------------------------------------
+  - type: web
+    name: resto-backend-staging
+    env: node
+    rootDir: backend_node
+    buildCommand: "npm install && npm run build"
+    startCommand: "node dist/server.js"
+    healthCheckPath: "/health/ready"
+    envVars:
+      - key: NODE_ENV
+        value: "staging"
+      - key: PORT
+        value: "10000"
+      - key: DATABASE_URL
+        sync: false # Configured in Render Dashboard: Supabase Staging Pooler (Port 6543)
+      - key: DIRECT_DATABASE_URL
+        sync: false # Configured in Render Dashboard: Supabase Staging Direct (Port 5432 for LISTEN)
+      - key: DATABASE_SCHEMA
+        value: "resto_v2"
+      - key: DB_POOL_MIN
+        value: "2"
+      - key: DB_POOL_MAX
+        value: "20"
+      - key: CLIENT_ORIGINS
+        value: "https://resto-frontend-staging.onrender.com,https://resto-dashboard-staging.onrender.com"
+      - key: CORS_ALLOWED_ORIGINS
+        value: "https://resto-frontend-staging.onrender.com,https://resto-dashboard-staging.onrender.com"
+      - key: STAFF_JWT_SECRET
+        generateValue: true
+      - key: JWT_SECRET
+        generateValue: true
+      - key: TRACKING_TOKEN_SECRET
+        generateValue: true
+      - key: ALLOW_DEMO_AUTH
+        value: "false"
+      - key: SUPABASE_URL
+        sync: false # Staging Supabase project URL
+      - key: SUPABASE_ANON_KEY
+        sync: false # Staging Supabase anon key
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false # Staging Supabase service role key
+      - key: SUPABASE_STORAGE_BUCKET
+        value: "resto-media"
+
+  # -------------------------------------------------------------------
+  # 2. Staging Customer Frontend
+  # -------------------------------------------------------------------
+  - type: web
+    name: resto-frontend-staging
+    env: static
+    rootDir: frontend
+    buildCommand: "npm install && npm run build"
+    staticPublishPath: "dist"
+    envVars:
+      - key: VITE_API_URL
+        value: "https://resto-backend-staging.onrender.com/api"
+      - key: VITE_RESTAURANT_SLUG
+        value: "olive-and-ember"
+      - key: VITE_DEMO_MODE
+        value: "false"
+    routes:
+      - type: rewrite
+        source: "/*"
+        destination: "/index.html"
+
+  # -------------------------------------------------------------------
+  # 3. Staging Restaurant Dashboard
+  # -------------------------------------------------------------------
+  - type: web
+    name: resto-dashboard-staging
+    env: static
+    rootDir: dashboard
+    buildCommand: "npm install && npm run build"
+    staticPublishPath: "dist"
+    envVars:
+      - key: VITE_API_URL
+        value: "https://resto-backend-staging.onrender.com/api"
+      - key: VITE_RESTAURANT_SLUG
+        value: "olive-and-ember"
+      - key: VITE_DEMO_MODE
+        value: "false"
+    routes:
+      - type: rewrite
+        source: "/*"
+        destination: "/index.html"

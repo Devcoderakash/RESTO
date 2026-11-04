@@ -10,9 +10,14 @@
     "build": "tsc -p tsconfig.json",
     "start": "node dist/server.js",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test": "vitest run",
+    "test": "vitest run --fileParallelism=false",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "migrate:apply": "tsx src/scripts/apply_v2_migrations.ts",
+    "migrate:verify": "tsx src/scripts/apply_v2_migrations.ts --verify-only",
+    "migrate:rollback": "tsx src/scripts/apply_v2_migrations.ts --rollback",
+    "migrate:data": "tsx src/scripts/migrate_v1_to_v2.ts",
+    "migrate:reconcile": "tsx src/scripts/reconcile_v1_v2.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.1",
@@ -36,6 +41,7 @@
     "@types/supertest": "^6.0.2",
     "@vitest/coverage-v8": "^3.2.7",
     "pg-mem": "^3.0.14",
+    "playwright": "^1.64.1",
     "supertest": "^7.0.0",
     "tsx": "^4.19.3",
     "typescript": "^5.7.3",

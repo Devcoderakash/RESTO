@@ -509,6 +509,15 @@ export async function runMigration(options: {
       summary.tables['realtime_events'].inserted++;
     }
 
+    // Synchronize serial sequences with MAX(id) after bulk insertion
+    await client.query(`
+      SELECT setval(
+        pg_get_serial_sequence('${schema}.realtime_events', 'id'),
+        COALESCE((SELECT MAX(id) FROM ${schema}.realtime_events), 1),
+        true
+      );
+    `);
+
     // Reconcile and commit or rollback
     if (dryRun) {
       await client.query('ROLLBACK');

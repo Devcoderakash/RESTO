@@ -130,6 +130,7 @@ export class TableService {
     const tables = await this.listTables(restaurantId);
     return tables.map((t) => ({
       id: t.id,
+      number: t.tableNumber,
       tableNumber: t.tableNumber,
       table_number: t.table_number,
       capacity: t.capacity,
@@ -142,6 +143,7 @@ export class TableService {
       id: r.id,
       restaurantId: r.restaurant_id,
       restaurant_id: r.restaurant_id,
+      number: r.table_number,
       tableNumber: r.table_number,
       table_number: r.table_number,
       capacity: Number(r.capacity),

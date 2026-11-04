@@ -12,8 +12,8 @@ export const corsMiddleware = cors({
       return callback(null, true);
     }
 
-    // In production, reject unapproved origins
-    if (env.NODE_ENV === 'production') {
+    // In production/staging, reject unapproved origins
+    if (env.NODE_ENV === 'production' || env.NODE_ENV === 'staging') {
       return callback(new Error(`CORS blocked: origin '${origin}' is not authorized`), false);
     }
 
@@ -33,6 +33,7 @@ export const corsMiddleware = cors({
     'X-Staff-Internal',
     'X-Restaurant-ID',
     'X-Idempotency-Key',
+    'Idempotency-Key',
     'X-Tracking-Token',
     'Last-Event-ID',
   ],
