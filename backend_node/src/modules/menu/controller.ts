@@ -57,7 +57,7 @@ export async function updateMenuItem(req: Request, res: Response, next: NextFunc
 export async function toggleAvailability(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const id = getParam(req.params.id);
-    const isAvailable = req.body.is_available ?? req.body.isAvailable;
+    const isAvailable = req.body.available ?? req.body.is_available ?? req.body.isAvailable;
     const item = await service.toggleAvailability(id, Boolean(isAvailable));
     res.json({ item });
   } catch (error) {

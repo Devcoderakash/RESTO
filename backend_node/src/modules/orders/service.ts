@@ -39,7 +39,15 @@ export class OrderService {
     tableNumber: string;
     customerName: string;
     customerPhone?: string;
-    items: Array<{ id: string; quantity: number; notes?: string }>;
+    items: Array<{
+      id?: string;
+      menuItemId?: string;
+      menu_item_id?: string;
+      quantity: number;
+      notes?: string;
+      specialInstructions?: string;
+      special_instructions?: string;
+    }>;
     specialInstructions?: string;
     idempotencyKey?: string;
   }) {
@@ -85,9 +93,13 @@ export class OrderService {
 
     for (let i = 0; i < items.length; i++) {
       const requested = items[i];
-      const menuItem = await this.menuRepo.findById(requested.id);
+      const requestedId = requested.menuItemId || requested.id || requested.menu_item_id;
+      if (!requestedId) {
+        throw new BadRequestError('Menu item ID is required for each order item');
+      }
+      const menuItem = await this.menuRepo.findById(requestedId);
       if (!menuItem) {
-        throw new BadRequestError(`Menu item '${requested.id}' not found`);
+        throw new BadRequestError(`Menu item '${requestedId}' not found`);
       }
       if (menuItem.available === false || (menuItem as any).is_available === false) {
         throw new BadRequestError(`Menu item '${menuItem.name}' is currently unavailable`);
@@ -106,7 +118,7 @@ export class OrderService {
         unitPrice,
         quantity,
         totalPrice,
-        notes: requested.notes,
+        notes: requested.specialInstructions || requested.notes || requested.special_instructions,
       });
     }
 
@@ -180,20 +192,22 @@ export class OrderService {
     const existing = await this.orderRepo.findById(id);
     if (!existing) throw new NotFoundError(`Order '${id}' not found`);
 
-    const validStatuses = ['pending', 'confirmed', 'preparing', 'ready', 'delivered', 'completed', 'cancelled'];
+    const validStatuses = ['pending', 'confirmed', 'preparing', 'ready', 'served', 'delivered', 'completed', 'cancelled'];
     if (!validStatuses.includes(newStatus)) {
       throw new BadRequestError(`Invalid order status '${newStatus}'. Allowed: ${validStatuses.join(', ')}`);
     }
 
-    // State machine check
-    this.assertValidTransition(existing.status, newStatus as any);
+    const mappedStatus = (newStatus === 'delivered' ? 'served' : newStatus) as any;
 
-    const updated = await this.orderRepo.updateStatus(id, newStatus as any);
+    // State machine check
+    this.assertValidTransition(existing.status, mappedStatus);
+
+    const updated = await this.orderRepo.updateStatus(id, mappedStatus);
     const items = await this.orderRepo.getOrderItems(id);
-    const formatted = this.formatOrder(updated!, items);
+    const formatted = this.formatOrder({ ...updated!, status: (newStatus === 'delivered' ? 'delivered' : updated!.status) as any }, items);
 
     // If order is completed or cancelled, check table auto-release
-    if (newStatus === 'completed' || newStatus === 'cancelled') {
+    if (mappedStatus === 'completed' || mappedStatus === 'cancelled') {
       const activeCount = await this.orderRepo.countActiveOrdersForTable(existing.restaurant_id, existing.table_number, id);
       if (activeCount === 0 && existing.table_id) {
         await this.tableRepo.updateStatus(existing.table_id, 'available');
@@ -231,12 +245,13 @@ export class OrderService {
     const order = await this.getOrderById(id);
     const table = order.tableId ? await this.tableRepo.findById(order.tableId) : null;
 
+    const isServedOrDone = ['served', 'delivered', 'completed'].includes(order.status);
     const timeline = [
       { status: 'pending', label: 'Order Received', completed: true, time: order.createdAt },
-      { status: 'confirmed', label: 'Order Confirmed', completed: ['confirmed', 'preparing', 'ready', 'delivered', 'completed'].includes(order.status) },
-      { status: 'preparing', label: 'Kitchen Preparing', completed: ['preparing', 'ready', 'delivered', 'completed'].includes(order.status) },
-      { status: 'ready', label: 'Ready to Serve', completed: ['ready', 'delivered', 'completed'].includes(order.status) },
-      { status: 'delivered', label: 'Delivered to Table', completed: ['delivered', 'completed'].includes(order.status) },
+      { status: 'confirmed', label: 'Order Confirmed', completed: ['confirmed', 'preparing', 'ready', 'served', 'delivered', 'completed'].includes(order.status) },
+      { status: 'preparing', label: 'Kitchen Preparing', completed: ['preparing', 'ready', 'served', 'delivered', 'completed'].includes(order.status) },
+      { status: 'ready', label: 'Ready to Serve', completed: ['ready', 'served', 'delivered', 'completed'].includes(order.status) },
+      { status: 'delivered', label: 'Delivered to Table', completed: isServedOrDone },
       { status: 'completed', label: 'Completed', completed: order.status === 'completed' },
     ];
 
@@ -256,8 +271,9 @@ export class OrderService {
     const allowedTransitions: Record<string, string[]> = {
       pending: ['confirmed', 'preparing', 'cancelled'],
       confirmed: ['preparing', 'ready', 'cancelled'],
-      preparing: ['ready', 'delivered', 'cancelled'],
-      ready: ['delivered', 'completed', 'cancelled'],
+      preparing: ['ready', 'served', 'delivered', 'cancelled'],
+      ready: ['served', 'delivered', 'completed', 'cancelled'],
+      served: ['completed', 'cancelled'],
       delivered: ['completed', 'cancelled'],
     };
 

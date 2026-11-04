@@ -36,7 +36,11 @@ export async function createOrder(req: Request, res: Response, next: NextFunctio
     const customerPhone = req.body.customer_phone || req.body.customerPhone;
     const items = req.body.items;
     const specialInstructions = req.body.special_instructions || req.body.specialInstructions;
-    const idempotencyKey = (req.headers['x-idempotency-key'] as string) || req.body.idempotency_key || req.body.idempotencyKey;
+    const idempotencyKey =
+      (req.headers['idempotency-key'] as string) ||
+      (req.headers['x-idempotency-key'] as string) ||
+      req.body.idempotency_key ||
+      req.body.idempotencyKey;
 
     const result = await service.createOrder({
       restaurantId,

@@ -9,7 +9,7 @@ export interface OrderRow {
   table_number: string;
   customer_name: string;
   customer_phone: string | null;
-  status: 'pending' | 'confirmed' | 'preparing' | 'ready' | 'delivered' | 'completed' | 'cancelled';
+  status: 'pending' | 'confirmed' | 'preparing' | 'ready' | 'served' | 'delivered' | 'completed' | 'cancelled';
   subtotal: string | number;
   tax: string | number;
   service_charge: string | number;
@@ -176,7 +176,7 @@ export class OrderRepository {
 
   public async updateStatus(
     id: string,
-    status: 'pending' | 'confirmed' | 'preparing' | 'ready' | 'delivered' | 'completed' | 'cancelled'
+    status: 'pending' | 'confirmed' | 'preparing' | 'ready' | 'served' | 'delivered' | 'completed' | 'cancelled'
   ): Promise<OrderRow | null> {
     const res = await query<OrderRow>(
       `UPDATE resto_v2.orders
