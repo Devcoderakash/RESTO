@@ -28,16 +28,25 @@ export interface ApplyMigrationsOptions {
   allowLocal?: boolean;
   allowPrimaryTarget?: boolean | string;
   primaryProjectRef?: string;
+  applyPatches?: boolean;
+}
+
+export interface MigrationVerificationResult {
+  tablesCount: number;
+  tables: string[];
+  rlsCount: number;
+  forceRlsCount: number;
+  foreignKeysCount: number;
+  customIndexesCount: number;
+  policiesCount: number;
+  triggerExists: boolean;
+  functionSearchPath: string | null;
+  publicTablesCount: number;
 }
 
 export async function applyMigrations(options: ApplyMigrationsOptions): Promise<{
   steps: MigrationStepResult[];
-  verification: {
-    tablesCount: number;
-    tables: string[];
-    rlsCount: number;
-    triggerExists: boolean;
-  };
+  verification: MigrationVerificationResult;
 }> {
   // 1. Enforce Fail-Closed Target & Rollback Security Validation
   if (options.rollback) {
@@ -90,7 +99,18 @@ export async function applyMigrations(options: ApplyMigrationsOptions): Promise<
       });
       return {
         steps,
-        verification: { tablesCount: 0, tables: [], rlsCount: 0, triggerExists: false },
+        verification: {
+          tablesCount: 0,
+          tables: [],
+          rlsCount: 0,
+          forceRlsCount: 0,
+          foreignKeysCount: 0,
+          customIndexesCount: 0,
+          policiesCount: 0,
+          triggerExists: false,
+          functionSearchPath: null,
+          publicTablesCount: 0,
+        },
       };
     }
 
@@ -127,21 +147,78 @@ export async function applyMigrations(options: ApplyMigrationsOptions): Promise<
           throw new Error(`Failed to apply migration ${file}: ${err.message}`);
         }
       }
+
+      // Apply reviewed hardening patches if enabled
+      if (options.applyPatches !== false) {
+        const patchFiles = ['patches/004_hardening_notify_realtime_event.sql'];
+        for (const patchFile of patchFiles) {
+          const patchPath = path.join(migrationsDir, patchFile);
+          if (fs.existsSync(patchPath)) {
+            const patchSql = fs.readFileSync(patchPath, 'utf8');
+            console.log(`⏳ Applying hardening patch: ${patchFile}...`);
+            const start = Date.now();
+            try {
+              await client.query('BEGIN');
+              await client.query(patchSql);
+              await client.query('COMMIT');
+              steps.push({
+                file: patchFile,
+                success: true,
+                durationMs: Date.now() - start,
+              });
+              console.log(`✅ Applied ${patchFile} in ${Date.now() - start}ms`);
+            } catch (err: any) {
+              await client.query('ROLLBACK');
+              steps.push({
+                file: patchFile,
+                success: false,
+                durationMs: Date.now() - start,
+                error: err.message,
+              });
+              throw new Error(`Failed to apply patch ${patchFile}: ${err.message}`);
+            }
+          }
+        }
+      }
     }
 
     // Schema Verification
     const tablesRes = await client.query(`
       SELECT table_name 
       FROM information_schema.tables 
-      WHERE table_schema = 'resto_v2' 
+      WHERE table_schema = 'resto_v2' AND table_type = 'BASE TABLE'
       ORDER BY table_name;
     `);
     const tables = tablesRes.rows.map((r) => r.table_name);
 
     const rlsRes = await client.query(`
-      SELECT tablename 
-      FROM pg_tables 
-      WHERE schemaname = 'resto_v2' AND rowsecurity = true;
+      SELECT relname 
+      FROM pg_class 
+      WHERE relnamespace = 'resto_v2'::regnamespace AND relkind = 'r' AND relrowsecurity = true;
+    `);
+
+    const forceRlsRes = await client.query(`
+      SELECT relname 
+      FROM pg_class 
+      WHERE relnamespace = 'resto_v2'::regnamespace AND relkind = 'r' AND relforcerowsecurity = true;
+    `);
+
+    const fksRes = await client.query(`
+      SELECT conname 
+      FROM pg_constraint 
+      WHERE contype = 'f' AND connamespace = 'resto_v2'::regnamespace;
+    `);
+
+    const customIdxRes = await client.query(`
+      SELECT indexname 
+      FROM pg_indexes 
+      WHERE schemaname = 'resto_v2' AND indexname LIKE 'idx_v2_%';
+    `);
+
+    const policiesRes = await client.query(`
+      SELECT policyname 
+      FROM pg_policies 
+      WHERE schemaname = 'resto_v2';
     `);
 
     const triggerRes = await client.query(`
@@ -152,13 +229,31 @@ export async function applyMigrations(options: ApplyMigrationsOptions): Promise<
         AND trigger_name = 'trg_notify_realtime_event';
     `);
 
+    const procRes = await client.query(`
+      SELECT proname, proconfig 
+      FROM pg_proc 
+      WHERE pronamespace = 'resto_v2'::regnamespace AND proname = 'notify_realtime_event';
+    `);
+
+    const publicTablesRes = await client.query(`
+      SELECT table_name 
+      FROM information_schema.tables 
+      WHERE table_schema = 'public' AND table_type = 'BASE TABLE';
+    `);
+
     return {
       steps,
       verification: {
         tablesCount: tables.length,
         tables,
         rlsCount: rlsRes.rows.length,
+        forceRlsCount: forceRlsRes.rows.length,
+        foreignKeysCount: fksRes.rows.length,
+        customIndexesCount: customIdxRes.rows.length,
+        policiesCount: policiesRes.rows.length,
         triggerExists: triggerRes.rows.length > 0,
+        functionSearchPath: procRes.rows[0]?.proconfig?.[0] || null,
+        publicTablesCount: publicTablesRes.rows.length,
       },
     };
   } finally {
@@ -224,7 +319,13 @@ if (process.argv[1]?.includes('apply_v2_migrations')) {
       console.log('\n🔍 Schema Verification:');
       console.log(`- Tables in resto_v2: ${result.verification.tablesCount} (Expected: 11)`);
       console.log(`- Tables with RLS enabled: ${result.verification.rlsCount} (Expected: 11)`);
+      console.log(`- Tables with RLS forced: ${result.verification.forceRlsCount} (Expected: 11)`);
+      console.log(`- Foreign Keys in resto_v2: ${result.verification.foreignKeysCount} (Expected: 16)`);
+      console.log(`- Custom Indexes in resto_v2: ${result.verification.customIndexesCount} (Expected: 20)`);
+      console.log(`- RLS Policies in resto_v2: ${result.verification.policiesCount} (Expected: 20)`);
       console.log(`- Realtime Trigger Active: ${result.verification.triggerExists ? 'YES' : 'NO'}`);
+      console.log(`- Realtime Function search_path: ${result.verification.functionSearchPath || '[NONE]'}`);
+      console.log(`- Public Schema Tables Count: ${result.verification.publicTablesCount} (Expected: 0)`);
       console.log(`- Tables list: ${result.verification.tables.join(', ')}`);
       process.exit(0);
     })
