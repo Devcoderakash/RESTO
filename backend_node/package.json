@@ -22,6 +22,11 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.1",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.0",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^22.13.8",
+    "@types/pg": "^8.11.11",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
@@ -31,21 +36,16 @@
     "pg": "^8.13.3",
     "pino": "^9.6.0",
     "pino-http": "^10.4.0",
+    "typescript": "^5.7.3",
     "zod": "^3.24.2"
   },
   "devDependencies": {
-    "@types/cors": "^2.8.17",
-    "@types/express": "^5.0.0",
-    "@types/jsonwebtoken": "^9.0.10",
-    "@types/node": "^22.13.8",
-    "@types/pg": "^8.11.11",
     "@types/supertest": "^6.0.2",
     "@vitest/coverage-v8": "^3.2.7",
     "pg-mem": "^3.0.14",
     "playwright": "^1.64.1",
     "supertest": "^7.0.0",
     "tsx": "^4.19.3",
-    "typescript": "^5.7.3",
     "vitest": "^3.0.7"
   },
   "engines": {

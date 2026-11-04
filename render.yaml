@@ -30,7 +30,7 @@ services:
     name: resto-frontend
     env: static
     rootDir: frontend
-    buildCommand: "npm install && npm run build"
+    buildCommand: "npm install --include=dev && npm run build"
     staticPublishPath: "dist"
     envVars:
       - key: VITE_API_URL
@@ -47,7 +47,7 @@ services:
     name: resto-dashboard
     env: static
     rootDir: dashboard
-    buildCommand: "npm install && npm run build"
+    buildCommand: "npm install --include=dev && npm run build"
     staticPublishPath: "dist"
     envVars:
       - key: VITE_API_URL
@@ -64,7 +64,7 @@ services:
     name: resto-backend-node
     env: node
     rootDir: backend_node
-    buildCommand: "npm install && npm run build"
+    buildCommand: "npm install --include=dev && npm run build"
     startCommand: "node dist/server.js"
     healthCheckPath: "/health/ready"
     envVars:

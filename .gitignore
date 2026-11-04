@@ -46,3 +46,4 @@ pyrightconfig.json
 # Logs
 logs/
 *.log
+RENDER_ENV_TO_COPY.txt
