@@ -16,6 +16,7 @@
     "migrate:apply": "tsx src/scripts/apply_v2_migrations.ts",
     "migrate:verify": "tsx src/scripts/apply_v2_migrations.ts --verify-only",
     "migrate:rollback": "tsx src/scripts/apply_v2_migrations.ts --rollback",
+    "migrate:dry-run": "tsx src/scripts/dry_run_v1_to_v2.ts",
     "migrate:data": "tsx src/scripts/migrate_v1_to_v2.ts",
     "migrate:reconcile": "tsx src/scripts/reconcile_v1_v2.ts"
   },
