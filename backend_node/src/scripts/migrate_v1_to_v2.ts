@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import pg from 'pg';
+import { validateDatabaseTarget } from '../utils/databaseTargetValidator.js';
 
 const { Pool } = pg;
 
@@ -25,16 +26,16 @@ export async function runMigration(options: {
   targetSchema?: string;
   dryRun?: boolean;
   reset?: boolean;
+  expectedProjectRef?: string;
+  allowLocal?: boolean;
 }): Promise<MigrationSummary> {
-  // CRITICAL PRODUCTION SAFETY GUARD
-  const BLOCKED_PRODUCTION_PROJECT_REFS = ['zmpthsiiouukjjyrbpnz', 'krsdjcxgfnlsstjwuqlj'];
-  for (const ref of BLOCKED_PRODUCTION_PROJECT_REFS) {
-    if (options.connectionString.includes(ref)) {
-      throw new Error(
-        `CRITICAL SAFETY VIOLATION: Target connection references production project '${ref}'. Operations against production are strictly blocked.`
-      );
-    }
-  }
+  // Fail-closed target validation
+  validateDatabaseTarget({
+    connectionString: options.connectionString,
+    expectedProjectRef: options.expectedProjectRef,
+    allowLocal: options.allowLocal,
+    operationName: 'V1-to-V2 Data Migration Engine',
+  });
 
   const startTime = Date.now();
   const schema = options.targetSchema || 'resto_v2';
@@ -548,17 +549,28 @@ export async function runMigration(options: {
 
 // Standalone CLI execution
 if (import.meta.url === `file://${process.argv[1]}`) {
-  const isDryRun = process.argv.includes('--dry-run');
-  const isReset = process.argv.includes('--reset');
+  const args = process.argv.slice(2);
+  const isDryRun = args.includes('--dry-run');
+  const isReset = args.includes('--reset');
+  const allowLocal = args.includes('--allow-local') || process.env.ALLOW_LOCAL_TARGET === 'true';
   const connStr = process.env.STAGING_DATABASE_URL || process.env.DATABASE_URL || 'postgresql://akashlodhi@localhost:5432/resto_v2_rehearsal';
   const filePath = process.env.BACKUP_FILE || 'backend/supabase/backup_v1_production_data.json';
 
+  let expectedRef = process.env.EXPECTED_STAGING_PROJECT_REF;
+  const refArg = args.find((a) => a.startsWith('--expected-project-ref='));
+  if (refArg) {
+    expectedRef = refArg.split('=')[1];
+  } else if (!expectedRef && (connStr.includes('localhost') || connStr.includes('127.0.0.1'))) {
+    expectedRef = 'local-rehearsal';
+  }
+
   console.log(`\n======================================================`);
   console.log(`RESTO V2 — Migration Engine Execution`);
-  console.log(`Database: ${connStr.replace(/:[^:@]+@/, ':****@')}`);
-  console.log(`File:     ${filePath}`);
-  console.log(`Dry-Run:  ${isDryRun}`);
-  console.log(`Reset:    ${isReset}`);
+  console.log(`Database:     ${connStr.replace(/:[^:@]+@/, ':****@')}`);
+  console.log(`Expected Ref: ${expectedRef || '[NONE]'}`);
+  console.log(`File:         ${filePath}`);
+  console.log(`Dry-Run:      ${isDryRun}`);
+  console.log(`Reset:        ${isReset}`);
   console.log(`======================================================\n`);
 
   runMigration({
@@ -566,6 +578,8 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     backupFilePath: filePath,
     dryRun: isDryRun,
     reset: isReset,
+    expectedProjectRef: expectedRef,
+    allowLocal,
   })
     .then((summary) => {
       console.log('Migration Result:');

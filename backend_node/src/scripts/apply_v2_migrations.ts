@@ -1,6 +1,10 @@
 import fs from 'fs';
 import path from 'path';
 import pg from 'pg';
+import {
+  validateDatabaseTarget,
+  validateRollbackAuthorization,
+} from '../utils/databaseTargetValidator.js';
 
 const { Pool } = pg;
 
@@ -11,11 +15,17 @@ export interface MigrationStepResult {
   error?: string;
 }
 
-export async function applyMigrations(options: {
+export interface ApplyMigrationsOptions {
   connectionString: string;
   rollback?: boolean;
   verifyOnly?: boolean;
-}): Promise<{
+  expectedProjectRef?: string;
+  confirmStagingRollback?: string | boolean;
+  confirmProjectRef?: string;
+  allowLocal?: boolean;
+}
+
+export async function applyMigrations(options: ApplyMigrationsOptions): Promise<{
   steps: MigrationStepResult[];
   verification: {
     tablesCount: number;
@@ -24,26 +34,22 @@ export async function applyMigrations(options: {
     triggerExists: boolean;
   };
 }> {
-  // CRITICAL PRODUCTION SAFETY GUARD
-  const BLOCKED_PRODUCTION_PROJECT_REFS = ['zmpthsiiouukjjyrbpnz', 'krsdjcxgfnlsstjwuqlj'];
-  for (const ref of BLOCKED_PRODUCTION_PROJECT_REFS) {
-    if (options.connectionString.includes(ref)) {
-      throw new Error(
-        `CRITICAL SAFETY VIOLATION: Target connection references production project '${ref}'. Operations against production are strictly blocked.`
-      );
-    }
-  }
-
-  // STRICT ROLLBACK SAFETY GUARD
+  // 1. Enforce Fail-Closed Target & Rollback Security Validation
   if (options.rollback) {
-    const isLocal =
-      options.connectionString.includes('localhost') ||
-      options.connectionString.includes('127.0.0.1');
-    if (!isLocal && !process.env.CONFIRM_STAGING_ROLLBACK) {
-      throw new Error(
-        `ROLLBACK BLOCKED: Remote database rollback requires explicit confirmation via CONFIRM_STAGING_ROLLBACK=true environment variable.`
-      );
-    }
+    validateRollbackAuthorization({
+      connectionString: options.connectionString,
+      expectedProjectRef: options.expectedProjectRef,
+      confirmStagingRollback: options.confirmStagingRollback,
+      confirmProjectRef: options.confirmProjectRef,
+      allowLocal: options.allowLocal,
+    });
+  } else {
+    validateDatabaseTarget({
+      connectionString: options.connectionString,
+      expectedProjectRef: options.expectedProjectRef,
+      allowLocal: options.allowLocal,
+      operationName: options.verifyOnly ? 'Migration verification' : 'Migration apply',
+    });
   }
 
   const pool = new Pool({ connectionString: options.connectionString });
@@ -154,18 +160,38 @@ if (process.argv[1]?.includes('apply_v2_migrations')) {
   const connStr =
     process.env.STAGING_DATABASE_URL ||
     process.env.DATABASE_URL ||
-    'postgresql://postgres:postgres@localhost:5432/resto_v2_rehearsal';
+    'postgresql://akashlodhi@localhost:5432/resto_v2_rehearsal';
 
   const isRollback = args.includes('--rollback');
   const isVerify = args.includes('--verify-only');
+  const allowLocal = args.includes('--allow-local') || process.env.ALLOW_LOCAL_TARGET === 'true';
+
+  let expectedRef = process.env.EXPECTED_STAGING_PROJECT_REF;
+  const refArg = args.find((a) => a.startsWith('--expected-project-ref='));
+  if (refArg) {
+    expectedRef = refArg.split('=')[1];
+  } else if (!expectedRef && (connStr.includes('localhost') || connStr.includes('127.0.0.1'))) {
+    expectedRef = 'local-rehearsal';
+  }
+
+  let confirmRollbackRef = process.env.CONFIRM_STAGING_ROLLBACK_PROJECT_REF;
+  const rollbackRefArg = args.find((a) => a.startsWith('--confirm-rollback-ref='));
+  if (rollbackRefArg) {
+    confirmRollbackRef = rollbackRefArg.split('=')[1];
+  }
 
   console.log(`🚀 Starting V2 Migration Runner...`);
   console.log(`Target: ${connStr.replace(/:[^:]*@/, ':****@')}`);
+  console.log(`Expected Project Ref: ${expectedRef || '[NONE]'}`);
 
   applyMigrations({
     connectionString: connStr,
     rollback: isRollback,
     verifyOnly: isVerify,
+    expectedProjectRef: expectedRef,
+    confirmStagingRollback: process.env.CONFIRM_STAGING_ROLLBACK,
+    confirmProjectRef: confirmRollbackRef,
+    allowLocal,
   })
     .then((result) => {
       console.log('\n📊 Migration Execution Summary:');
@@ -182,4 +208,3 @@ if (process.argv[1]?.includes('apply_v2_migrations')) {
       process.exit(1);
     });
 }
-

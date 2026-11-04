@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 import pg from 'pg';
+import { validateDatabaseTarget } from '../utils/databaseTargetValidator.js';
 
 const { Pool } = pg;
 
@@ -10,16 +11,16 @@ export async function runReconciliation(options: {
   backupFilePath: string;
   storageBackupDir: string;
   schema?: string;
+  expectedProjectRef?: string;
+  allowLocal?: boolean;
 }) {
-  // CRITICAL PRODUCTION SAFETY GUARD
-  const BLOCKED_PRODUCTION_PROJECT_REFS = ['zmpthsiiouukjjyrbpnz', 'krsdjcxgfnlsstjwuqlj'];
-  for (const ref of BLOCKED_PRODUCTION_PROJECT_REFS) {
-    if (options.connectionString.includes(ref)) {
-      throw new Error(
-        `CRITICAL SAFETY VIOLATION: Target connection references production project '${ref}'. Operations against production are strictly blocked.`
-      );
-    }
-  }
+  // Fail-closed target validation
+  validateDatabaseTarget({
+    connectionString: options.connectionString,
+    expectedProjectRef: options.expectedProjectRef,
+    allowLocal: options.allowLocal,
+    operationName: 'Data & Financial Reconciliation',
+  });
 
   const schema = options.schema || 'resto_v2';
   const pool = new Pool({ connectionString: options.connectionString });
@@ -251,14 +252,26 @@ export async function runReconciliation(options: {
 
 // Standalone execution
 if (import.meta.url === `file://${process.argv[1]}`) {
+  const args = process.argv.slice(2);
+  const allowLocal = args.includes('--allow-local') || process.env.ALLOW_LOCAL_TARGET === 'true';
   const connStr = process.env.STAGING_DATABASE_URL || process.env.DATABASE_URL || 'postgresql://akashlodhi@localhost:5432/resto_v2_rehearsal';
   const filePath = process.env.BACKUP_FILE || 'backend/supabase/backup_v1_production_data.json';
   const storageDir = process.env.STORAGE_DIR || 'backend/supabase/storage_backup/menu-items';
+
+  let expectedRef = process.env.EXPECTED_STAGING_PROJECT_REF;
+  const refArg = args.find((a) => a.startsWith('--expected-project-ref='));
+  if (refArg) {
+    expectedRef = refArg.split('=')[1];
+  } else if (!expectedRef && (connStr.includes('localhost') || connStr.includes('127.0.0.1'))) {
+    expectedRef = 'local-rehearsal';
+  }
 
   runReconciliation({
     connectionString: connStr,
     backupFilePath: filePath,
     storageBackupDir: storageDir,
+    expectedProjectRef: expectedRef,
+    allowLocal,
   })
     .then((report) => {
       console.log('Reconciliation Report:');

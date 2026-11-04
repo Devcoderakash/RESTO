@@ -22,8 +22,14 @@ services:
         value: "10000"
       - key: DATABASE_URL
         sync: false # Configured in Render Dashboard: Supabase Staging Pooler (Port 6543)
+      - key: STAGING_DATABASE_URL
+        sync: false # Alias for Staging Pooler (Port 6543)
       - key: DIRECT_DATABASE_URL
         sync: false # Configured in Render Dashboard: Supabase Staging Direct (Port 5432 for LISTEN)
+      - key: STAGING_DIRECT_DATABASE_URL
+        sync: false # Alias for Staging Direct (Port 5432)
+      - key: EXPECTED_STAGING_PROJECT_REF
+        sync: false # Enforces fail-closed staging project identity check
       - key: DATABASE_SCHEMA
         value: "resto_v2"
       - key: DB_POOL_MIN

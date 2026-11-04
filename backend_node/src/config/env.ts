@@ -1,13 +1,21 @@
 import { z } from 'zod';
 import dotenv from 'dotenv';
+import {
+  KNOWN_PRODUCTION_REFS,
+  resolveStagingDatabaseUrls,
+  validateDatabaseTarget,
+} from '../utils/databaseTargetValidator.js';
 
 dotenv.config();
+
+const resolvedDb = resolveStagingDatabaseUrls(process.env);
 
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test', 'staging']).default('development'),
   PORT: z.coerce.number().default(5001),
-  DATABASE_URL: z.string().default(() => process.env.STAGING_DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/postgres'),
-  DIRECT_DATABASE_URL: z.string().optional().default(() => process.env.STAGING_DIRECT_DATABASE_URL || ''),
+  DATABASE_URL: z.string().default(resolvedDb.databaseUrl),
+  DIRECT_DATABASE_URL: z.string().optional().default(resolvedDb.directDatabaseUrl),
+  EXPECTED_STAGING_PROJECT_REF: z.string().optional(),
   DATABASE_SCHEMA: z.string().default('resto_v2'),
   DB_POOL_MIN: z.coerce.number().default(2),
   DB_POOL_MAX: z.coerce.number().default(20),
@@ -36,7 +44,29 @@ function parseEnv(): EnvConfig {
     console.error('❌ Invalid environment configuration:', result.error.format());
     throw new Error('Environment configuration validation failed');
   }
-  return result.data;
+
+  const data = result.data;
+
+  // Staging isolation checks
+  if (data.NODE_ENV === 'staging') {
+    for (const prodRef of KNOWN_PRODUCTION_REFS) {
+      if (data.DATABASE_URL.includes(prodRef) || (data.DIRECT_DATABASE_URL && data.DIRECT_DATABASE_URL.includes(prodRef))) {
+        throw new Error(
+          `CRITICAL SAFETY VIOLATION: Staging environment configured with production database reference '${prodRef}'! Refusing startup.`
+        );
+      }
+    }
+
+    if (data.EXPECTED_STAGING_PROJECT_REF) {
+      validateDatabaseTarget({
+        connectionString: data.DATABASE_URL,
+        expectedProjectRef: data.EXPECTED_STAGING_PROJECT_REF,
+        operationName: 'Staging environment backend startup',
+      });
+    }
+  }
+
+  return data;
 }
 
 export const env = parseEnv();
