@@ -171,7 +171,7 @@ export class OrderService {
 
         // Fetch all items (original + newly added dishes)
         const allItemsRes = await client.query<OrderItemRow>(
-          `SELECT * FROM resto_v2.order_items WHERE order_id = $1 ORDER BY created_at ASC;`,
+          `SELECT * FROM resto_v2.order_items WHERE order_id = $1;`,
           [existingOrderId]
         );
         const allItems = allItemsRes.rows;
