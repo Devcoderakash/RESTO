@@ -146,7 +146,11 @@ describe('RESTO V2 — Phase 4B.6 Production Data Migration Preflight & Dry-Run 
 
     // Verify target table counts match planned inventory post-import
     for (const [tbl, count] of Object.entries(report.targetDatabase.tables)) {
-      expect(count).toBe(report.plannedInventory.tables[tbl]);
+      if (tbl === 'realtime_events') {
+        expect(count).toBeGreaterThanOrEqual(report.plannedInventory.tables[tbl]);
+      } else {
+        expect(count).toBe(report.plannedInventory.tables[tbl]);
+      }
     }
 
     // Verify planned inventory

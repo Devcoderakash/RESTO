@@ -27,7 +27,7 @@ export const DEFAULT_RESTAURANT_ID = 'rest-olive-ember-01';
 
 export function extractTenant(req: Request, _res: Response, next: NextFunction): void {
   const slug = (req.query.restaurantSlug as string) || (req.headers['x-restaurant-slug'] as string) || DEFAULT_RESTAURANT_SLUG;
-  const restaurantId = (req.headers['x-restaurant-id'] as string) || DEFAULT_RESTAURANT_ID;
+  const restaurantId = (req.headers['x-restaurant-id'] as string) || (req.query.restaurantId as string) || (req.query.restaurant_id as string) || DEFAULT_RESTAURANT_ID;
 
   req.restaurantSlug = slug;
   req.restaurantId = restaurantId;
