@@ -49,7 +49,7 @@ export class StaffService {
     let staff = await this.repo.findByEmail(email);
     if (!staff) {
       // In development mode only, allow fallback staff demo login
-      if (env.NODE_ENV !== 'production' && env.ALLOW_DEMO_AUTH && email.includes('oliveandember.com')) {
+      if (env.NODE_ENV !== 'production' && env.NODE_ENV !== 'staging' && env.ALLOW_DEMO_AUTH && email.includes('oliveandember.com')) {
         const demoStaff = {
           id: 'staff-manager-01',
           email,

@@ -2,6 +2,10 @@ import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 import pg from 'pg';
+import dotenv from 'dotenv';
+import { validateDatabaseTarget } from '../utils/databaseTargetValidator.js';
+
+dotenv.config();
 
 const { Pool } = pg;
 
@@ -10,9 +14,29 @@ export async function runReconciliation(options: {
   backupFilePath: string;
   storageBackupDir: string;
   schema?: string;
+  expectedProjectRef?: string;
+  allowLocal?: boolean;
+  allowPrimaryTarget?: boolean | string;
+  primaryProjectRef?: string;
 }) {
+  // Fail-closed target validation
+  validateDatabaseTarget({
+    connectionString: options.connectionString,
+    expectedProjectRef: options.expectedProjectRef,
+    allowLocal: options.allowLocal,
+    allowPrimaryTarget: options.allowPrimaryTarget,
+    primaryProjectRef: options.primaryProjectRef,
+    operationName: 'Data & Financial Reconciliation',
+  });
+
   const schema = options.schema || 'resto_v2';
-  const pool = new Pool({ connectionString: options.connectionString });
+  const isLocal =
+    options.connectionString.includes('localhost') ||
+    options.connectionString.includes('127.0.0.1');
+  const pool = new Pool({
+    connectionString: options.connectionString.split('?')[0],
+    ssl: isLocal ? false : { rejectUnauthorized: false },
+  });
   const client = await pool.connect();
 
   let backupFilePath = options.backupFilePath;
@@ -241,14 +265,37 @@ export async function runReconciliation(options: {
 
 // Standalone execution
 if (import.meta.url === `file://${process.argv[1]}`) {
-  const connStr = process.env.DATABASE_URL || 'postgresql://akashlodhi@localhost:5432/resto_v2_rehearsal';
+  const args = process.argv.slice(2);
+  const allowLocal = args.includes('--allow-local') || process.env.ALLOW_LOCAL_TARGET === 'true';
+  const allowPrimary =
+    args.includes('--allow-primary-target') ||
+    process.env.ALLOW_RESTO_V2_PRIMARY_TARGET === 'true';
+  let primaryRef = process.env.RESTO_V2_PRIMARY_PROJECT_REF;
+  const primaryRefArg = args.find((a) => a.startsWith('--primary-project-ref='));
+  if (primaryRefArg) {
+    primaryRef = primaryRefArg.split('=')[1];
+  }
+
+  const connStr = process.env.STAGING_DATABASE_URL || process.env.DATABASE_URL || 'postgresql://akashlodhi@localhost:5432/resto_v2_rehearsal';
   const filePath = process.env.BACKUP_FILE || 'backend/supabase/backup_v1_production_data.json';
   const storageDir = process.env.STORAGE_DIR || 'backend/supabase/storage_backup/menu-items';
+
+  let expectedRef = process.env.EXPECTED_STAGING_PROJECT_REF;
+  const refArg = args.find((a) => a.startsWith('--expected-project-ref='));
+  if (refArg) {
+    expectedRef = refArg.split('=')[1];
+  } else if (!expectedRef && (connStr.includes('localhost') || connStr.includes('127.0.0.1'))) {
+    expectedRef = 'local-rehearsal';
+  }
 
   runReconciliation({
     connectionString: connStr,
     backupFilePath: filePath,
     storageBackupDir: storageDir,
+    expectedProjectRef: expectedRef,
+    allowLocal,
+    allowPrimaryTarget: allowPrimary,
+    primaryProjectRef: primaryRef,
   })
     .then((report) => {
       console.log('Reconciliation Report:');

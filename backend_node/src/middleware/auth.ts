@@ -51,7 +51,7 @@ export function requireStaffAuth(req: Request, _res: Response, next: NextFunctio
 
   // 1. In Production, reject ALL demo tokens unconditionally
   if (isDemoToken) {
-    if (env.NODE_ENV === 'production' || !env.ALLOW_DEMO_AUTH) {
+    if (env.NODE_ENV === 'production' || env.NODE_ENV === 'staging' || !env.ALLOW_DEMO_AUTH) {
       logger.warn({ token: token.slice(0, 10) }, 'Rejected demo token in production / secure mode');
       throw new UnauthorizedError('Demo authentication is strictly disabled in production. Cryptographically verified JWT required.');
     }

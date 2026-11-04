@@ -62,9 +62,12 @@ export class RealtimeEventBus {
     const payloadData = {
       ...event.payload,
       id: event.id,
+      eventId: event.id,
       eventType: event.eventType,
       entityType: event.entityType,
       entityId: event.entityId,
+      payload: event.payload,
+      createdAt: event.createdAt,
       timestamp: event.createdAt,
     };
 
@@ -90,9 +93,12 @@ export class RealtimeEventBus {
     const payloadData = {
       ...event.payload,
       id: event.id,
+      eventId: event.id,
       eventType: event.eventType,
       entityType: event.entityType,
       entityId: event.entityId,
+      payload: event.payload,
+      createdAt: event.createdAt,
       timestamp: event.createdAt,
     };
     const frame = `id: ${event.id}\nevent: ${event.eventType}\ndata: ${JSON.stringify(payloadData)}\n\n`;

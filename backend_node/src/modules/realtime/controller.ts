@@ -35,9 +35,12 @@ export async function streamEvents(req: Request, res: Response, next: NextFuncti
             const payloadData = {
               ...evt.payload,
               id: evt.id,
+              eventId: evt.id,
               eventType: evt.eventType,
               entityType: evt.entityType,
               entityId: evt.entityId,
+              payload: evt.payload,
+              createdAt: evt.createdAt,
               timestamp: evt.createdAt,
             };
             res.write(`id: ${evt.id}\nevent: ${evt.eventType}\ndata: ${JSON.stringify(payloadData)}\n\n`);

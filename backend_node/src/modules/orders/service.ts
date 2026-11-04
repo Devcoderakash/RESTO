@@ -6,6 +6,16 @@ import { OutboxService } from '../realtime/OutboxService.js';
 import { TableRepository } from '../tables/repository.js';
 import { OrderItemRow, OrderRepository, OrderRow } from './repository.js';
 
+const CUSTOMER_STATUS_MAP: Record<string, string> = {
+  pending: 'received',
+  confirmed: 'accepted',
+  preparing: 'preparing',
+  ready: 'ready',
+  served: 'served',
+  completed: 'completed',
+  cancelled: 'cancelled',
+};
+
 export class OrderService {
   constructor(
     private readonly orderRepo = new OrderRepository(),
@@ -51,10 +61,11 @@ export class OrderService {
     specialInstructions?: string;
     idempotencyKey?: string;
   }) {
-    const { restaurantId, tableNumber, customerName, items, specialInstructions, idempotencyKey } = data;
+    const { restaurantId, tableNumber, items, specialInstructions, idempotencyKey } = data;
+    const customerName = data.customerName?.trim() || `Guest Table ${tableNumber || '01'}`;
 
-    if (!restaurantId || !tableNumber || !customerName) {
-      throw new BadRequestError('restaurantId, tableNumber, and customerName are required');
+    if (!restaurantId || !tableNumber) {
+      throw new BadRequestError('restaurantId and tableNumber are required');
     }
     if (!items || !Array.isArray(items) || items.length === 0) {
       throw new BadRequestError('Order must contain at least one item');
@@ -67,8 +78,10 @@ export class OrderService {
         const orderItems = await this.orderRepo.getOrderItems(existing.id);
         const formatted = this.formatOrder(existing, orderItems);
         return {
+          ...formatted,
           order: formatted,
           trackingToken: existing.tracking_token || '',
+          accessToken: existing.tracking_token || '',
           idempotentReplay: true,
         };
       }
@@ -84,6 +97,7 @@ export class OrderService {
       unitPrice: number;
       quantity: number;
       totalPrice: number;
+      foodType?: string;
       notes?: string;
     }> = [];
 
@@ -118,6 +132,7 @@ export class OrderService {
         unitPrice,
         quantity,
         totalPrice,
+        foodType: menuItem.food_type,
         notes: requested.specialInstructions || requested.notes || requested.special_instructions,
       });
     }
@@ -168,6 +183,14 @@ export class OrderService {
     // 6. Outbox Realtime Notifications
     await this.outbox.publishEvent(undefined, {
       restaurantId,
+      eventType: 'order.created',
+      entityType: 'order',
+      entityId: orderId,
+      payload: formattedOrder,
+    });
+
+    await this.outbox.publishEvent(undefined, {
+      restaurantId,
       eventType: 'order:created',
       entityType: 'order',
       entityId: orderId,
@@ -183,8 +206,11 @@ export class OrderService {
     });
 
     return {
+      ...formattedOrder,
       order: formattedOrder,
       trackingToken,
+      accessToken: trackingToken,
+      idempotentReplay: false,
     };
   }
 
@@ -244,6 +270,7 @@ export class OrderService {
   public async getOrderTracking(id: string) {
     const order = await this.getOrderById(id);
     const table = order.tableId ? await this.tableRepo.findById(order.tableId) : null;
+    const customerStatus = CUSTOMER_STATUS_MAP[order.status] || order.status;
 
     const isServedOrDone = ['served', 'delivered', 'completed'].includes(order.status);
     const timeline = [
@@ -256,6 +283,14 @@ export class OrderService {
     ];
 
     return {
+      ...order,
+      status: customerStatus,
+      orderStatus: order.status,
+      estimatedTimeMinutes: 20,
+      statusTimeline: [
+        { stage: 'received', timestamp: order.createdAt },
+        ...(order.status !== 'pending' ? [{ stage: customerStatus, timestamp: new Date().toISOString() }] : []),
+      ],
       order,
       table: table ? { id: table.id, tableNumber: table.table_number, status: table.status } : null,
       timeline,
@@ -305,6 +340,21 @@ export class OrderService {
       customerPhone: order.customer_phone,
       customer_phone: order.customer_phone,
       status: order.status,
+      orderStatus: order.status,
+      order_status: order.status,
+      estimatedTimeMinutes: 20,
+      breakdown: {
+        subtotal,
+        cgst: Number((order as any).cgst ?? (subtotal * 0.025).toFixed(2)),
+        sgst: Number((order as any).sgst ?? (subtotal * 0.025).toFixed(2)),
+        gstTotal: tax,
+        serviceCharge,
+        finalTotal: total,
+      },
+      statusTimeline: [
+        { stage: 'received', timestamp: order.created_at },
+        ...(order.status !== 'pending' ? [{ stage: CUSTOMER_STATUS_MAP[order.status] || order.status, timestamp: new Date().toISOString() }] : []),
+      ],
       subtotal,
       tax,
       cgst: Number((order as any).cgst ?? (subtotal * 0.025).toFixed(2)),
@@ -320,20 +370,40 @@ export class OrderService {
       specialInstructions,
       special_instructions: specialInstructions,
       trackingToken,
-      items: items.map((i) => ({
-        id: i.id,
-        menuItemId: i.menu_item_id,
-        menu_item_id: i.menu_item_id,
-        name: i.item_name,
-        itemName: i.item_name,
-        item_name: i.item_name,
-        unitPrice: Number(i.unit_price),
-        unit_price: Number(i.unit_price),
-        quantity: Number(i.quantity),
-        totalPrice: Number(i.total_price),
-        total_price: Number(i.total_price),
-        notes: (i as any).special_instructions ?? (i as any).notes ?? null,
-      })),
+      items: items.map((i) => {
+        const isVeg = (i as any).food_type !== 'non_veg';
+        return {
+          id: i.id,
+          cartItemId: i.id,
+          menuItemId: i.menu_item_id,
+          menu_item_id: i.menu_item_id,
+          name: i.item_name,
+          itemName: i.item_name,
+          item_name: i.item_name,
+          unitPrice: Number(i.unit_price),
+          unit_price: Number(i.unit_price),
+          quantity: Number(i.quantity),
+          totalPrice: Number(i.total_price),
+          total_price: Number(i.total_price),
+          notes: (i as any).special_instructions ?? (i as any).notes ?? null,
+          food_type: (i as any).food_type || (isVeg ? 'veg' : 'non_veg'),
+          foodType: (i as any).food_type || (isVeg ? 'veg' : 'non_veg'),
+          isVegetarian: isVeg,
+          is_vegetarian: isVeg,
+          foodItem: {
+            id: i.menu_item_id,
+            name: i.item_name,
+            description: '',
+            price: Number(i.unit_price),
+            category: '',
+            image: '',
+            isVegetarian: isVeg,
+            is_vegetarian: isVeg,
+            dietaryType: isVeg ? 'veg' : 'non-veg',
+            isAvailable: true,
+          },
+        };
+      }),
       createdAt: order.created_at,
       created_at: order.created_at,
       updatedAt: order.updated_at,

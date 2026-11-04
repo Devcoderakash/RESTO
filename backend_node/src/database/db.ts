@@ -8,13 +8,14 @@ let poolInstance: pg.Pool | null = null;
 
 export function getPool(): pg.Pool {
   if (!poolInstance) {
+    const isLocal = env.DATABASE_URL.includes('localhost') || env.DATABASE_URL.includes('127.0.0.1');
     const config: pg.PoolConfig = {
-      connectionString: env.DATABASE_URL,
+      connectionString: env.DATABASE_URL.split('?')[0],
       min: env.DB_POOL_MIN,
       max: env.DB_POOL_MAX,
       idleTimeoutMillis: env.DB_IDLE_TIMEOUT_MS,
       connectionTimeoutMillis: env.DB_CONNECTION_TIMEOUT_MS,
-      ssl: env.DATABASE_URL.includes('localhost') ? false : { rejectUnauthorized: false },
+      ssl: isLocal ? false : { rejectUnauthorized: false },
     };
 
     poolInstance = new Pool(config);

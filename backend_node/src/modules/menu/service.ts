@@ -29,7 +29,14 @@ export class MenuService {
         };
       });
 
-    return { categories: formattedCategories };
+    const flatItems = items
+      .filter((i) => (i.available ?? true))
+      .map((i) => this.formatItem(i));
+
+    return {
+      categories: formattedCategories,
+      items: flatItems,
+    };
   }
 
   public async getStaffMenu(restaurantId: string) {
