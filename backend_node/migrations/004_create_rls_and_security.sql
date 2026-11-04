@@ -48,36 +48,45 @@ END $$;
 
 -- 3. Public Read Policies for Customer Ordering
 -- Only active catalog entities are readable by anon/authenticated roles
+DROP POLICY IF EXISTS public_read_restaurants ON resto_v2.restaurants;
 CREATE POLICY public_read_restaurants ON resto_v2.restaurants
     FOR SELECT TO anon, authenticated
     USING (is_active = true);
 
+DROP POLICY IF EXISTS public_read_tables ON resto_v2.restaurant_tables;
 CREATE POLICY public_read_tables ON resto_v2.restaurant_tables
     FOR SELECT TO anon, authenticated
     USING (restaurant_id IN (SELECT id FROM resto_v2.restaurants WHERE is_active = true));
 
+DROP POLICY IF EXISTS public_read_categories ON resto_v2.categories;
 CREATE POLICY public_read_categories ON resto_v2.categories
     FOR SELECT TO anon, authenticated
     USING (is_visible = true AND restaurant_id IN (SELECT id FROM resto_v2.restaurants WHERE is_active = true));
 
+DROP POLICY IF EXISTS public_read_menu_items ON resto_v2.menu_items;
 CREATE POLICY public_read_menu_items ON resto_v2.menu_items
     FOR SELECT TO anon, authenticated
     USING (restaurant_id IN (SELECT id FROM resto_v2.restaurants WHERE is_active = true));
 
 -- 4. Operational Tables Strict Access Lockdown
 -- Orders, items, payments, requests, and staff are locked to service_role only
+DROP POLICY IF EXISTS orders_service_role_only ON resto_v2.orders;
 CREATE POLICY orders_service_role_only ON resto_v2.orders
     FOR ALL TO service_role USING (true) WITH CHECK (true);
 
+DROP POLICY IF EXISTS order_items_service_role_only ON resto_v2.order_items;
 CREATE POLICY order_items_service_role_only ON resto_v2.order_items
     FOR ALL TO service_role USING (true) WITH CHECK (true);
 
+DROP POLICY IF EXISTS payments_service_role_only ON resto_v2.payments;
 CREATE POLICY payments_service_role_only ON resto_v2.payments
     FOR ALL TO service_role USING (true) WITH CHECK (true);
 
+DROP POLICY IF EXISTS service_requests_service_role_only ON resto_v2.service_requests;
 CREATE POLICY service_requests_service_role_only ON resto_v2.service_requests
     FOR ALL TO service_role USING (true) WITH CHECK (true);
 
+DROP POLICY IF EXISTS staff_service_role_only ON resto_v2.staff;
 CREATE POLICY staff_service_role_only ON resto_v2.staff
     FOR ALL TO service_role USING (true) WITH CHECK (true);
 
