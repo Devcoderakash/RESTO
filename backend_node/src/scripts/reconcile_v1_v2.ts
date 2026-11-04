@@ -13,12 +13,16 @@ export async function runReconciliation(options: {
   schema?: string;
   expectedProjectRef?: string;
   allowLocal?: boolean;
+  allowPrimaryTarget?: boolean | string;
+  primaryProjectRef?: string;
 }) {
   // Fail-closed target validation
   validateDatabaseTarget({
     connectionString: options.connectionString,
     expectedProjectRef: options.expectedProjectRef,
     allowLocal: options.allowLocal,
+    allowPrimaryTarget: options.allowPrimaryTarget,
+    primaryProjectRef: options.primaryProjectRef,
     operationName: 'Data & Financial Reconciliation',
   });
 
@@ -254,6 +258,15 @@ export async function runReconciliation(options: {
 if (import.meta.url === `file://${process.argv[1]}`) {
   const args = process.argv.slice(2);
   const allowLocal = args.includes('--allow-local') || process.env.ALLOW_LOCAL_TARGET === 'true';
+  const allowPrimary =
+    args.includes('--allow-primary-target') ||
+    process.env.ALLOW_RESTO_V2_PRIMARY_TARGET === 'true';
+  let primaryRef = process.env.RESTO_V2_PRIMARY_PROJECT_REF;
+  const primaryRefArg = args.find((a) => a.startsWith('--primary-project-ref='));
+  if (primaryRefArg) {
+    primaryRef = primaryRefArg.split('=')[1];
+  }
+
   const connStr = process.env.STAGING_DATABASE_URL || process.env.DATABASE_URL || 'postgresql://akashlodhi@localhost:5432/resto_v2_rehearsal';
   const filePath = process.env.BACKUP_FILE || 'backend/supabase/backup_v1_production_data.json';
   const storageDir = process.env.STORAGE_DIR || 'backend/supabase/storage_backup/menu-items';
@@ -272,6 +285,8 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     storageBackupDir: storageDir,
     expectedProjectRef: expectedRef,
     allowLocal,
+    allowPrimaryTarget: allowPrimary,
+    primaryProjectRef: primaryRef,
   })
     .then((report) => {
       console.log('Reconciliation Report:');

@@ -1,7 +1,6 @@
 import { z } from 'zod';
 import dotenv from 'dotenv';
 import {
-  KNOWN_PRODUCTION_REFS,
   resolveStagingDatabaseUrls,
   validateDatabaseTarget,
 } from '../utils/databaseTargetValidator.js';
@@ -16,6 +15,8 @@ const envSchema = z.object({
   DATABASE_URL: z.string().default(resolvedDb.databaseUrl),
   DIRECT_DATABASE_URL: z.string().optional().default(resolvedDb.directDatabaseUrl),
   EXPECTED_STAGING_PROJECT_REF: z.string().optional(),
+  ALLOW_RESTO_V2_PRIMARY_TARGET: z.coerce.boolean().default(false),
+  RESTO_V2_PRIMARY_PROJECT_REF: z.string().optional(),
   DATABASE_SCHEMA: z.string().default('resto_v2'),
   DB_POOL_MIN: z.coerce.number().default(2),
   DB_POOL_MAX: z.coerce.number().default(20),
@@ -47,21 +48,15 @@ function parseEnv(): EnvConfig {
 
   const data = result.data;
 
-  // Staging isolation checks
-  if (data.NODE_ENV === 'staging') {
-    for (const prodRef of KNOWN_PRODUCTION_REFS) {
-      if (data.DATABASE_URL.includes(prodRef) || (data.DIRECT_DATABASE_URL && data.DIRECT_DATABASE_URL.includes(prodRef))) {
-        throw new Error(
-          `CRITICAL SAFETY VIOLATION: Staging environment configured with production database reference '${prodRef}'! Refusing startup.`
-        );
-      }
-    }
-
+  // Target validation checks
+  if (data.NODE_ENV === 'staging' || data.NODE_ENV === 'production') {
     if (data.EXPECTED_STAGING_PROJECT_REF) {
       validateDatabaseTarget({
         connectionString: data.DATABASE_URL,
         expectedProjectRef: data.EXPECTED_STAGING_PROJECT_REF,
-        operationName: 'Staging environment backend startup',
+        allowPrimaryTarget: data.ALLOW_RESTO_V2_PRIMARY_TARGET,
+        primaryProjectRef: data.RESTO_V2_PRIMARY_PROJECT_REF,
+        operationName: `${data.NODE_ENV} environment backend startup`,
       });
     }
   }

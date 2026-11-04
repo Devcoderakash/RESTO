@@ -1,6 +1,11 @@
 import { URL } from 'url';
 
-export const KNOWN_PRODUCTION_REFS = ['zmpthsiiouukjjyrbpnz', 'krsdjcxgfnlsstjwuqlj'] as const;
+export const APPROVED_PRIMARY_PROJECT_REF = 'zmpthsiiouukjjyrbpnz' as const;
+export const UNAPPROVED_PRODUCTION_REFS = ['krsdjcxgfnlsstjwuqlj'] as const;
+export const KNOWN_PRODUCTION_REFS = [
+  APPROVED_PRIMARY_PROJECT_REF,
+  ...UNAPPROVED_PRODUCTION_REFS,
+] as const;
 
 export interface ExtractedTargetInfo {
   ref: string | null;
@@ -12,6 +17,8 @@ export interface ValidateTargetOptions {
   connectionString: string;
   expectedProjectRef?: string;
   allowLocal?: boolean;
+  allowPrimaryTarget?: boolean | string;
+  primaryProjectRef?: string;
   operationName?: string;
 }
 
@@ -105,12 +112,55 @@ export function extractProjectRef(connectionString: string): ExtractedTargetInfo
 }
 
 /**
+ * Checks whether the environment or caller has explicitly authorized the exact RESTO V2 primary project.
+ */
+export function checkPrimaryProjectAuthorization(options: {
+  allowPrimaryTarget?: boolean | string;
+  primaryProjectRef?: string;
+  expectedRef?: string;
+}): { authorized: boolean; reason?: string } {
+  const allowOptIn =
+    options.allowPrimaryTarget ?? process.env.ALLOW_RESTO_V2_PRIMARY_TARGET;
+  const isOptIn = allowOptIn === true || allowOptIn === 'true';
+
+  const primaryRef =
+    options.primaryProjectRef ?? process.env.RESTO_V2_PRIMARY_PROJECT_REF;
+
+  if (!isOptIn) {
+    return {
+      authorized: false,
+      reason:
+        `Primary target access requires explicit ALLOW_RESTO_V2_PRIMARY_TARGET=true.`,
+    };
+  }
+
+  if (primaryRef !== APPROVED_PRIMARY_PROJECT_REF) {
+    return {
+      authorized: false,
+      reason:
+        `Primary target authorization requires exact RESTO_V2_PRIMARY_PROJECT_REF='${APPROVED_PRIMARY_PROJECT_REF}'. Received: '${primaryRef || 'none'}'.`,
+    };
+  }
+
+  if (options.expectedRef && options.expectedRef !== APPROVED_PRIMARY_PROJECT_REF) {
+    return {
+      authorized: false,
+      reason:
+        `Target validation failed: Mismatched project reference. Expected '${options.expectedRef}', but primary database is '${APPROVED_PRIMARY_PROJECT_REF}'.`,
+    };
+  }
+
+  return { authorized: true };
+}
+
+/**
  * Validates the database target against a fail-closed allowlist.
  */
 export function validateDatabaseTarget(options: ValidateTargetOptions): {
   verified: boolean;
   projectRef: string;
   isLocal: boolean;
+  isPrimary: boolean;
 } {
   const { connectionString, operationName = 'Database operation' } = options;
   const expectedRef = options.expectedProjectRef || process.env.EXPECTED_STAGING_PROJECT_REF;
@@ -119,25 +169,41 @@ export function validateDatabaseTarget(options: ValidateTargetOptions): {
     throw new Error(`${operationName} failed: No connection string provided.`);
   }
 
-  // 1. Blacklist Check (Defense in Depth)
-  for (const prodRef of KNOWN_PRODUCTION_REFS) {
-    if (connectionString.includes(prodRef)) {
+  // 1. Check for unapproved production references (NEVER allowed under any circumstances)
+  for (const unapprovedRef of UNAPPROVED_PRODUCTION_REFS) {
+    if (connectionString.includes(unapprovedRef)) {
       throw new Error(
-        `CRITICAL SAFETY VIOLATION: Target connection references known production project '${prodRef}'. Operations against production are strictly blocked.`
+        `CRITICAL SAFETY VIOLATION: Target connection references unapproved production project '${unapprovedRef}'. Operations against this project are strictly prohibited.`
       );
     }
   }
 
-  // 2. Strict Allowlist Expectation Check
+  // 2. Check for the user-approved primary production project
+  const isTargetingApprovedPrimary = connectionString.includes(APPROVED_PRIMARY_PROJECT_REF);
+  if (isTargetingApprovedPrimary) {
+    const authCheck = checkPrimaryProjectAuthorization({
+      allowPrimaryTarget: options.allowPrimaryTarget,
+      primaryProjectRef: options.primaryProjectRef,
+      expectedRef,
+    });
+
+    if (!authCheck.authorized) {
+      throw new Error(
+        `CRITICAL SAFETY VIOLATION: Target connection references primary production project '${APPROVED_PRIMARY_PROJECT_REF}'. ${authCheck.reason}`
+      );
+    }
+  }
+
+  // 3. Strict Allowlist Expectation Check
   if (!expectedRef) {
     throw new Error(
-      `${operationName} failed: Missing required EXPECTED_STAGING_PROJECT_REF. Staging project identity cannot be verified without an explicit allowlist expectation.`
+      `${operationName} failed: Missing required EXPECTED_STAGING_PROJECT_REF. Staging/primary project identity cannot be verified without an explicit allowlist expectation.`
     );
   }
 
   const { ref, isLocal, host } = extractProjectRef(connectionString);
 
-  // 3. Reject Local Target when Remote Staging is Expected
+  // 4. Reject Local Target when Remote Operation is Expected
   if (isLocal) {
     const isExplicitLocalExpected =
       expectedRef === 'local-rehearsal' ||
@@ -147,39 +213,41 @@ export function validateDatabaseTarget(options: ValidateTargetOptions): {
 
     if (!isExplicitLocalExpected) {
       throw new Error(
-        `${operationName} failed: Refuse execution because target is local (${host || 'localhost'}) when a remote staging operation is expected (expected staging project: '${expectedRef}').`
+        `${operationName} failed: Refuse execution because target is local (${host || 'localhost'}) when a remote staging/primary operation is expected (expected project: '${expectedRef}').`
       );
     }
 
-    return { verified: true, projectRef: 'local-rehearsal', isLocal: true };
+    return { verified: true, projectRef: 'local-rehearsal', isLocal: true, isPrimary: false };
   }
 
-  // 4. Reject Remote Target when Local was Explicitly Expected
+  // 5. Reject Remote Target when Local was Explicitly Expected
   if (expectedRef === 'local-rehearsal' || expectedRef === 'local') {
     throw new Error(
       `${operationName} failed: Target is a remote host ('${host}') when local execution was explicitly expected.`
     );
   }
 
-  // 5. Fail if Identity Cannot Be Verified
+  // 6. Fail if Identity Cannot Be Verified
   if (!ref) {
     throw new Error(
       `${operationName} failed: Cannot verify project identity from connection string ('${host}'). Fail-closed: refusing execution against unverified database.`
     );
   }
 
-  // 6. Strict Allowlist Match Check
+  // 7. Strict Allowlist Match Check
   if (ref !== expectedRef) {
     throw new Error(
-      `${operationName} failed: Mismatched project reference. Target database identifies as '${ref}', but expected staging project is '${expectedRef}'.`
+      `${operationName} failed: Mismatched project reference. Target database identifies as '${ref}', but expected project is '${expectedRef}'.`
     );
   }
 
-  return { verified: true, projectRef: ref, isLocal: false };
+  const isPrimary = ref === APPROVED_PRIMARY_PROJECT_REF;
+  return { verified: true, projectRef: ref, isLocal: false, isPrimary };
 }
 
 /**
  * Enforces dual-confirmation rollback authorization.
+ * Destructive rollback against the primary production database is strictly blocked.
  */
 export function validateRollbackAuthorization(options: RollbackAuthOptions): void {
   const target = validateDatabaseTarget({
@@ -188,6 +256,13 @@ export function validateRollbackAuthorization(options: RollbackAuthOptions): voi
     allowLocal: options.allowLocal,
     operationName: 'Rollback authorization',
   });
+
+  // Rollback against the primary production project is strictly prohibited
+  if (target.isPrimary || options.connectionString.includes(APPROVED_PRIMARY_PROJECT_REF)) {
+    throw new Error(
+      `ROLLBACK BLOCKED: Destructive rollback operations are strictly prohibited against RESTO V2 primary production project '${APPROVED_PRIMARY_PROJECT_REF}'.`
+    );
+  }
 
   const confirmStaging =
     options.confirmStagingRollback ?? process.env.CONFIRM_STAGING_ROLLBACK;
@@ -250,14 +325,30 @@ export function resolveStagingDatabaseUrls(envVars: Record<string, string | unde
     envVars.DIRECT_DATABASE_URL ||
     databaseUrl;
 
-  // 3. Validate against production contamination in staging mode
-  if (isStaging) {
-    for (const prodRef of KNOWN_PRODUCTION_REFS) {
-      if (databaseUrl.includes(prodRef) || directDatabaseUrl.includes(prodRef)) {
-        throw new Error(
-          `CRITICAL SAFETY VIOLATION: Staging environment configured with production database reference '${prodRef}'! Refusing startup.`
-        );
-      }
+  // 3. Validate against unapproved production contamination
+  for (const unapprovedRef of UNAPPROVED_PRODUCTION_REFS) {
+    if (databaseUrl.includes(unapprovedRef) || directDatabaseUrl.includes(unapprovedRef)) {
+      throw new Error(
+        `CRITICAL SAFETY VIOLATION: Database connection references unapproved production project '${unapprovedRef}'! Refusing startup.`
+      );
+    }
+  }
+
+  // 4. Validate approved primary target authorization
+  const referencesPrimary =
+    databaseUrl.includes(APPROVED_PRIMARY_PROJECT_REF) ||
+    directDatabaseUrl.includes(APPROVED_PRIMARY_PROJECT_REF);
+
+  if (referencesPrimary) {
+    const authCheck = checkPrimaryProjectAuthorization({
+      allowPrimaryTarget: envVars.ALLOW_RESTO_V2_PRIMARY_TARGET,
+      primaryProjectRef: envVars.RESTO_V2_PRIMARY_PROJECT_REF,
+    });
+
+    if (!authCheck.authorized) {
+      throw new Error(
+        `CRITICAL SAFETY VIOLATION: Database connection references primary project '${APPROVED_PRIMARY_PROJECT_REF}'. ${authCheck.reason}`
+      );
     }
   }
 

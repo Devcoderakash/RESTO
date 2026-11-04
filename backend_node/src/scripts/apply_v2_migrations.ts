@@ -23,6 +23,8 @@ export interface ApplyMigrationsOptions {
   confirmStagingRollback?: string | boolean;
   confirmProjectRef?: string;
   allowLocal?: boolean;
+  allowPrimaryTarget?: boolean | string;
+  primaryProjectRef?: string;
 }
 
 export async function applyMigrations(options: ApplyMigrationsOptions): Promise<{
@@ -48,6 +50,8 @@ export async function applyMigrations(options: ApplyMigrationsOptions): Promise<
       connectionString: options.connectionString,
       expectedProjectRef: options.expectedProjectRef,
       allowLocal: options.allowLocal,
+      allowPrimaryTarget: options.allowPrimaryTarget,
+      primaryProjectRef: options.primaryProjectRef,
       operationName: options.verifyOnly ? 'Migration verification' : 'Migration apply',
     });
   }
@@ -180,9 +184,19 @@ if (process.argv[1]?.includes('apply_v2_migrations')) {
     confirmRollbackRef = rollbackRefArg.split('=')[1];
   }
 
+  const allowPrimary =
+    args.includes('--allow-primary-target') ||
+    process.env.ALLOW_RESTO_V2_PRIMARY_TARGET === 'true';
+  let primaryRef = process.env.RESTO_V2_PRIMARY_PROJECT_REF;
+  const primaryRefArg = args.find((a) => a.startsWith('--primary-project-ref='));
+  if (primaryRefArg) {
+    primaryRef = primaryRefArg.split('=')[1];
+  }
+
   console.log(`🚀 Starting V2 Migration Runner...`);
   console.log(`Target: ${connStr.replace(/:[^:]*@/, ':****@')}`);
   console.log(`Expected Project Ref: ${expectedRef || '[NONE]'}`);
+  console.log(`Primary Target Opt-In: ${allowPrimary ? 'YES' : 'NO'}`);
 
   applyMigrations({
     connectionString: connStr,
@@ -192,6 +206,8 @@ if (process.argv[1]?.includes('apply_v2_migrations')) {
     confirmStagingRollback: process.env.CONFIRM_STAGING_ROLLBACK,
     confirmProjectRef: confirmRollbackRef,
     allowLocal,
+    allowPrimaryTarget: allowPrimary,
+    primaryProjectRef: primaryRef,
   })
     .then((result) => {
       console.log('\n📊 Migration Execution Summary:');

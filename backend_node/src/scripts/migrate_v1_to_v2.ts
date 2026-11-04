@@ -28,12 +28,16 @@ export async function runMigration(options: {
   reset?: boolean;
   expectedProjectRef?: string;
   allowLocal?: boolean;
+  allowPrimaryTarget?: boolean | string;
+  primaryProjectRef?: string;
 }): Promise<MigrationSummary> {
   // Fail-closed target validation
   validateDatabaseTarget({
     connectionString: options.connectionString,
     expectedProjectRef: options.expectedProjectRef,
     allowLocal: options.allowLocal,
+    allowPrimaryTarget: options.allowPrimaryTarget,
+    primaryProjectRef: options.primaryProjectRef,
     operationName: 'V1-to-V2 Data Migration Engine',
   });
 
@@ -556,6 +560,15 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const connStr = process.env.STAGING_DATABASE_URL || process.env.DATABASE_URL || 'postgresql://akashlodhi@localhost:5432/resto_v2_rehearsal';
   const filePath = process.env.BACKUP_FILE || 'backend/supabase/backup_v1_production_data.json';
 
+  const allowPrimary =
+    args.includes('--allow-primary-target') ||
+    process.env.ALLOW_RESTO_V2_PRIMARY_TARGET === 'true';
+  let primaryRef = process.env.RESTO_V2_PRIMARY_PROJECT_REF;
+  const primaryRefArg = args.find((a) => a.startsWith('--primary-project-ref='));
+  if (primaryRefArg) {
+    primaryRef = primaryRefArg.split('=')[1];
+  }
+
   let expectedRef = process.env.EXPECTED_STAGING_PROJECT_REF;
   const refArg = args.find((a) => a.startsWith('--expected-project-ref='));
   if (refArg) {
@@ -568,6 +581,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   console.log(`RESTO V2 — Migration Engine Execution`);
   console.log(`Database:     ${connStr.replace(/:[^:@]+@/, ':****@')}`);
   console.log(`Expected Ref: ${expectedRef || '[NONE]'}`);
+  console.log(`Primary OptIn: ${allowPrimary ? 'YES' : 'NO'}`);
   console.log(`File:         ${filePath}`);
   console.log(`Dry-Run:      ${isDryRun}`);
   console.log(`Reset:        ${isReset}`);
@@ -580,6 +594,8 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     reset: isReset,
     expectedProjectRef: expectedRef,
     allowLocal,
+    allowPrimaryTarget: allowPrimary,
+    primaryProjectRef: primaryRef,
   })
     .then((summary) => {
       console.log('Migration Result:');
