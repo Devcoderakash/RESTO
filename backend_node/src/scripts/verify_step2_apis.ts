@@ -1,7 +1,7 @@
 import http from 'http';
 import { getPool } from '../database/db.js';
 
-const BASE_URL = 'http://localhost:5005';
+const BASE_URL = process.env.TEST_BASE_URL || 'http://localhost:5005';
 
 interface TestResult {
   step: string;
