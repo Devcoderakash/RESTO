@@ -144,9 +144,9 @@ describe('RESTO V2 — Phase 4B.6 Production Data Migration Preflight & Dry-Run 
     expect(report.targetDatabase.projectRef).toBe('zmpthsiiouukjjyrbpnz');
     expect(report.targetDatabase.schema).toBe('resto_v2');
 
-    // Verify all 11 tables currently contain 0 rows (pure read-only inspection)
+    // Verify target table counts match planned inventory post-import
     for (const [tbl, count] of Object.entries(report.targetDatabase.tables)) {
-      expect(count).toBe(0);
+      expect(count).toBe(report.plannedInventory.tables[tbl]);
     }
 
     // Verify planned inventory
