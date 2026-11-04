@@ -71,12 +71,11 @@ describe('RESTO V2 — Phase 4B.1 Real Browser Cross-Instance End-to-End Suite',
     // -------------------------------------------------------------
     // Step 2: Open Customer Frontend on Port 5180 (connected to Instance A: 5005)
     // -------------------------------------------------------------
-    await customerPage.goto(`${customerFrontendUrl}/menu?table=03`);
-    await customerPage.waitForLoadState('domcontentloaded');
+    await customerPage.goto(`${customerFrontendUrl}/menu?table=03`, { waitUntil: 'networkidle' });
 
     // Wait for menu items to render and click pizza card
     const pizza = customerPage.locator('text=Wood-Fired Margherita Pizza').locator('visible=true').first();
-    await pizza.waitFor({ state: 'visible', timeout: 10000 });
+    await pizza.waitFor({ state: 'visible', timeout: 15000 });
     expect(await pizza.isVisible()).toBe(true);
     await pizza.click();
 

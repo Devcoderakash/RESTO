@@ -27,7 +27,7 @@ export class RealtimeBridge {
     try {
       const isLocal = this.connectionString.includes('localhost') || this.connectionString.includes('127.0.0.1');
       this.client = new Client({
-        connectionString: this.connectionString,
+        connectionString: this.connectionString.split('?')[0],
         ssl: isLocal ? false : { rejectUnauthorized: false },
       });
 

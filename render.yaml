@@ -59,3 +59,51 @@ services:
         source: "/*"
         destination: "/index.html"
 
+  # 4. RESTO V2 Production Node.js Backend
+  - type: web
+    name: resto-backend-node
+    env: node
+    rootDir: backend_node
+    buildCommand: "npm install && npm run build"
+    startCommand: "node dist/server.js"
+    healthCheckPath: "/health/ready"
+    envVars:
+      - key: NODE_ENV
+        value: "production"
+      - key: PORT
+        value: "10000"
+      - key: DATABASE_URL
+        sync: false
+      - key: DIRECT_DATABASE_URL
+        sync: false
+      - key: RESTO_V2_PRIMARY_PROJECT_REF
+        value: "zmpthsiiouukjjyrbpnz"
+      - key: ALLOW_RESTO_V2_PRIMARY_TARGET
+        value: "true"
+      - key: DATABASE_SCHEMA
+        value: "resto_v2"
+      - key: DB_POOL_MIN
+        value: "2"
+      - key: DB_POOL_MAX
+        value: "20"
+      - key: CLIENT_ORIGINS
+        value: "https://resto-vc53.onrender.com,https://resto-frontend.onrender.com,https://resto-dashboard.onrender.com,https://resto-dining.vercel.app,https://resto-dashboard.vercel.app,http://localhost:5173,http://localhost:5174,http://localhost:5180,http://localhost:5181"
+      - key: CORS_ALLOWED_ORIGINS
+        value: "https://resto-vc53.onrender.com,https://resto-frontend.onrender.com,https://resto-dashboard.onrender.com,https://resto-dining.vercel.app,https://resto-dashboard.vercel.app,http://localhost:5173,http://localhost:5174,http://localhost:5180,http://localhost:5181"
+      - key: STAFF_JWT_SECRET
+        generateValue: true
+      - key: JWT_SECRET
+        generateValue: true
+      - key: TRACKING_TOKEN_SECRET
+        generateValue: true
+      - key: ALLOW_DEMO_AUTH
+        value: "false"
+      - key: SUPABASE_URL
+        value: "https://zmpthsiiouukjjyrbpnz.supabase.co"
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: SUPABASE_STORAGE_BUCKET
+        value: "resto-media"
+
