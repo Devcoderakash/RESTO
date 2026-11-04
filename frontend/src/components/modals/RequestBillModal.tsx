@@ -11,16 +11,17 @@ import { createServiceRequest } from '../../services/api'
 interface RequestBillModalProps {
   isOpen: boolean
   onClose: () => void
+  estimatedTotal?: number
 }
 
-export const RequestBillModal: React.FC<RequestBillModalProps> = ({ isOpen, onClose }) => {
+export const RequestBillModal: React.FC<RequestBillModalProps> = ({ isOpen, onClose, estimatedTotal }) => {
   const { currentTable } = useTableStore()
   const { getBreakdown, items } = useCartStore()
   const [paymentPreference, setPaymentPreference] = useState<'card' | 'cash' | 'upi'>('upi')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const cartBreakdown = getBreakdown()
-  const estimatedAmount = cartBreakdown.finalTotal
+  const estimatedAmount = estimatedTotal !== undefined && estimatedTotal > 0 ? estimatedTotal : cartBreakdown.finalTotal
 
   const handleConfirm = async () => {
     if (isSubmitting) return

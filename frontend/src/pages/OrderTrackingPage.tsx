@@ -386,7 +386,9 @@ export const OrderTrackingPage: React.FC = () => {
                 </div>
 
                 <span className="font-serif font-bold text-xs sm:text-sm text-charcoal">
-                  {formatCurrency(item.lineTotal)}
+                  {formatCurrency(
+                    Number(item.lineTotal ?? (item as any).totalPrice ?? (item as any).total_price ?? (item.foodItem?.price ? item.foodItem.price * item.quantity : 0))
+                  )}
                 </span>
               </div>
             ))}
@@ -419,6 +421,7 @@ export const OrderTrackingPage: React.FC = () => {
       <RequestBillModal
         isOpen={isBillModalOpen}
         onClose={() => setIsBillModalOpen(false)}
+        estimatedTotal={order?.breakdown?.finalTotal}
       />
     </div>
   )

@@ -88,10 +88,8 @@ export class OrderService {
     }
 
     // 2. Fetch canonical items and compute prices server-side
-    let subtotal = 0;
+    let newItemsSubtotal = 0;
     const computedItems: Array<{
-      id: string;
-      orderId: string;
       menuItemId: string;
       itemName: string;
       unitPrice: number;
@@ -100,10 +98,6 @@ export class OrderService {
       foodType?: string;
       notes?: string;
     }> = [];
-
-    const orderId = `ord-${Date.now()}-${randomUUID().substring(0, 6)}`;
-    const trackingToken = `trk-${randomUUID()}`;
-    const orderNumber = `ORD-${Date.now().toString().slice(-4)}`;
 
     for (let i = 0; i < items.length; i++) {
       const requested = items[i];
@@ -122,11 +116,9 @@ export class OrderService {
       const quantity = Math.max(1, Number(requested.quantity) || 1);
       const unitPrice = Number(menuItem.price);
       const totalPrice = Number((unitPrice * quantity).toFixed(2));
-      subtotal += totalPrice;
+      newItemsSubtotal += totalPrice;
 
       computedItems.push({
-        id: `itm-${orderId}-${i + 1}`,
-        orderId,
         menuItemId: menuItem.id,
         itemName: menuItem.name,
         unitPrice,
@@ -137,17 +129,133 @@ export class OrderService {
       });
     }
 
-    // 3. Exact 5% GST Calculation (2.5% CGST + 2.5% SGST)
-    subtotal = Number(subtotal.toFixed(2));
-    const tax = Number((subtotal * 0.05).toFixed(2));
-    const serviceCharge = 0.0;
-    const total = Number((subtotal + tax + serviceCharge).toFixed(2));
-
-    // 4. Resolve table ID if available
+    // 3. Resolve table ID if available
     const table = await this.tableRepo.findByTableNumber(restaurantId, tableNumber);
 
-    // 5. Execute atomic transaction
-    const { orderRow, itemRows } = await withTransaction(async (client) => {
+    // 4. Execute atomic transaction (with active table session check)
+    const { orderRow, itemRows, isAppended, trackingToken } = await withTransaction(async (client) => {
+      // Check if this table already has an active (non-completed, non-cancelled) order
+      const activeOrderRes = await client.query<OrderRow>(
+        `SELECT * FROM resto_v2.orders
+         WHERE restaurant_id = $1
+           AND table_number = $2
+           AND status NOT IN ('completed', 'cancelled')
+         ORDER BY created_at DESC
+         FOR UPDATE
+         LIMIT 1;`,
+        [restaurantId, tableNumber]
+      );
+      const existingActiveOrder = activeOrderRes.rows[0];
+
+      if (existingActiveOrder) {
+        // APPEND MODE: Customer is ordering more dishes for their existing table session
+        const existingOrderId = existingActiveOrder.id;
+        const resolvedTrackingToken =
+          existingActiveOrder.tracking_token ||
+          (existingActiveOrder as any).tracking_token_hash ||
+          `trk-${randomUUID()}`;
+
+        const itemsToInsert = computedItems.map((item, idx) => ({
+          id: `itm-${existingOrderId}-${Date.now()}-${idx + 1}`,
+          orderId: existingOrderId,
+          menuItemId: item.menuItemId,
+          itemName: item.itemName,
+          unitPrice: item.unitPrice,
+          quantity: item.quantity,
+          totalPrice: item.totalPrice,
+          foodType: item.foodType,
+          notes: item.notes,
+        }));
+
+        await this.orderRepo.insertOrderItemsInTx(client, itemsToInsert);
+
+        // Fetch all items (original + newly added dishes)
+        const allItemsRes = await client.query<OrderItemRow>(
+          `SELECT * FROM resto_v2.order_items WHERE order_id = $1 ORDER BY created_at ASC;`,
+          [existingOrderId]
+        );
+        const allItems = allItemsRes.rows;
+
+        // Recalculate combined bill totals
+        let combinedSubtotal = 0;
+        for (const itm of allItems) {
+          combinedSubtotal += Number(itm.total_price);
+        }
+        combinedSubtotal = Number(combinedSubtotal.toFixed(2));
+        const cgst = Number((combinedSubtotal * 0.025).toFixed(2));
+        const sgst = Number((combinedSubtotal * 0.025).toFixed(2));
+        const gstTotal = Number((cgst + sgst).toFixed(2));
+        const serviceCharge = Number((existingActiveOrder as any).service_charge || 0);
+        const finalTotal = Number((combinedSubtotal + gstTotal + serviceCharge).toFixed(2));
+
+        // If food was already delivered/ready, reset to preparing so kitchen knows new dishes are being cooked
+        const nextStatus =
+          existingActiveOrder.status === 'served' ||
+          existingActiveOrder.status === 'ready' ||
+          existingActiveOrder.status === 'delivered'
+            ? 'preparing'
+            : existingActiveOrder.status;
+
+        // Combine notes if new instructions provided
+        const prevNotes = (existingActiveOrder as any).order_notes || existingActiveOrder.special_instructions;
+        const mergedNotes = specialInstructions
+          ? prevNotes ? `${prevNotes} | ${specialInstructions}` : specialInstructions
+          : prevNotes;
+
+        const updatedOrderRes = await client.query<OrderRow>(
+          `UPDATE resto_v2.orders
+           SET subtotal = $2,
+               cgst = $3,
+               sgst = $4,
+               gst_total = $5,
+               final_total = $6,
+               status = $7,
+               order_notes = $8,
+               updated_at = clock_timestamp()
+           WHERE id = $1
+           RETURNING *;`,
+          [
+            existingOrderId,
+            combinedSubtotal,
+            cgst,
+            sgst,
+            gstTotal,
+            finalTotal,
+            nextStatus,
+            mergedNotes || null,
+          ]
+        );
+
+        return {
+          orderRow: updatedOrderRes.rows[0],
+          itemRows: allItems,
+          isAppended: true,
+          trackingToken: resolvedTrackingToken,
+        };
+      }
+
+      // NEW ORDER MODE: First order for this table session
+      const orderId = `ord-${Date.now()}-${randomUUID().substring(0, 6)}`;
+      const newTrackingToken = `trk-${randomUUID()}`;
+      const orderNumber = `ORD-${Date.now().toString().slice(-4)}`;
+
+      const itemsToInsert = computedItems.map((item, idx) => ({
+        id: `itm-${orderId}-${idx + 1}`,
+        orderId,
+        menuItemId: item.menuItemId,
+        itemName: item.itemName,
+        unitPrice: item.unitPrice,
+        quantity: item.quantity,
+        totalPrice: item.totalPrice,
+        foodType: item.foodType,
+        notes: item.notes,
+      }));
+
+      const subtotal = Number(newItemsSubtotal.toFixed(2));
+      const tax = Number((subtotal * 0.05).toFixed(2));
+      const serviceCharge = 0.0;
+      const total = Number((subtotal + tax + serviceCharge).toFixed(2));
+
       const insertedOrder = await this.orderRepo.insertOrderInTx(client, {
         id: orderId,
         restaurantId,
@@ -162,12 +270,12 @@ export class OrderService {
         total,
         specialInstructions,
         idempotencyKey,
-        trackingToken,
+        trackingToken: newTrackingToken,
       });
 
-      const insertedItems = await this.orderRepo.insertOrderItemsInTx(client, computedItems);
+      const insertedItems = await this.orderRepo.insertOrderItemsInTx(client, itemsToInsert);
 
-      // If table found and available, set occupied
+      // Set table occupied
       if (table && table.status === 'available') {
         await client.query(
           `UPDATE resto_v2.restaurant_tables SET status = 'occupied' WHERE id = $1;`,
@@ -175,35 +283,71 @@ export class OrderService {
         );
       }
 
-      return { orderRow: insertedOrder, itemRows: insertedItems };
+      return {
+        orderRow: insertedOrder,
+        itemRows: insertedItems,
+        isAppended: false,
+        trackingToken: newTrackingToken,
+      };
     });
 
     const formattedOrder = this.formatOrder(orderRow, itemRows);
 
-    // 6. Outbox Realtime Notifications
-    await this.outbox.publishEvent(undefined, {
-      restaurantId,
-      eventType: 'order.created',
-      entityType: 'order',
-      entityId: orderId,
-      payload: formattedOrder,
-    });
+    // 5. Outbox Realtime Notifications
+    if (isAppended) {
+      // Realtime notification: order updated with new dishes
+      await this.outbox.publishEvent(undefined, {
+        restaurantId,
+        eventType: 'order.updated',
+        entityType: 'order',
+        entityId: orderRow.id,
+        payload: formattedOrder,
+      });
 
-    await this.outbox.publishEvent(undefined, {
-      restaurantId,
-      eventType: 'order:created',
-      entityType: 'order',
-      entityId: orderId,
-      payload: formattedOrder,
-    });
+      await this.outbox.publishEvent(undefined, {
+        restaurantId,
+        eventType: 'order:updated',
+        entityType: 'order',
+        entityId: orderRow.id,
+        payload: formattedOrder,
+      });
 
-    await this.outbox.publishEvent(undefined, {
-      restaurantId,
-      eventType: 'order.updated',
-      entityType: 'order',
-      entityId: orderId,
-      payload: formattedOrder,
-    });
+      await this.outbox.publishEvent(undefined, {
+        restaurantId,
+        eventType: 'order:item_added',
+        entityType: 'order',
+        entityId: orderRow.id,
+        payload: {
+          ...formattedOrder,
+          newItemsCount: computedItems.length,
+          isAddon: true,
+        },
+      });
+    } else {
+      await this.outbox.publishEvent(undefined, {
+        restaurantId,
+        eventType: 'order.created',
+        entityType: 'order',
+        entityId: orderRow.id,
+        payload: formattedOrder,
+      });
+
+      await this.outbox.publishEvent(undefined, {
+        restaurantId,
+        eventType: 'order:created',
+        entityType: 'order',
+        entityId: orderRow.id,
+        payload: formattedOrder,
+      });
+
+      await this.outbox.publishEvent(undefined, {
+        restaurantId,
+        eventType: 'order.updated',
+        entityType: 'order',
+        entityId: orderRow.id,
+        payload: formattedOrder,
+      });
+    }
 
     return {
       ...formattedOrder,
@@ -211,6 +355,7 @@ export class OrderService {
       trackingToken,
       accessToken: trackingToken,
       idempotentReplay: false,
+      appendedToExistingOrder: isAppended,
     };
   }
 
@@ -385,6 +530,8 @@ export class OrderService {
           quantity: Number(i.quantity),
           totalPrice: Number(i.total_price),
           total_price: Number(i.total_price),
+          lineTotal: Number(i.total_price),
+          line_total: Number(i.total_price),
           notes: (i as any).special_instructions ?? (i as any).notes ?? null,
           food_type: (i as any).food_type || (isVeg ? 'veg' : 'non_veg'),
           foodType: (i as any).food_type || (isVeg ? 'veg' : 'non_veg'),

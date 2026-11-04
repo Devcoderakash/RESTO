@@ -276,17 +276,47 @@ class DashboardRealtimeService {
         ? 'Cancelled'
         : 'New'
 
+    const incomingItems = payload.items || payload.order_items
+
     useOrderStore.setState((state) => ({
       orders: state.orders.map((o) => {
         if (o.id !== payload.id) return o
+        const updatedItems = incomingItems
+          ? incomingItems.map((item: any) => ({
+              id: item.id || `oi-${Date.now()}`,
+              menuItemId: item.menuItemId || item.menu_item_id || item.id,
+              name: item.name || item.item_name || 'Dish',
+              isVeg: item.isVeg ?? item.is_veg ?? true,
+              price: Number(item.price || item.unit_price || 0),
+              quantity: Number(item.quantity || item.qty || 1),
+              notes: item.notes || item.special_instructions,
+              selectedOptions: item.selectedOptions || item.selected_addons,
+            }))
+          : o.items
+
         return {
           ...o,
           orderStatus: mappedStatus,
           paymentStatus: payload.paymentStatus || payload.payment_status || o.paymentStatus,
+          items: updatedItems,
+          subtotal: payload.subtotal !== undefined ? Number(payload.subtotal) : o.subtotal,
+          tax: (payload.tax !== undefined || payload.gst_total !== undefined)
+            ? Number(payload.tax ?? payload.gst_total)
+            : o.tax,
+          total: (payload.total !== undefined || payload.final_total !== undefined)
+            ? Number(payload.total ?? payload.final_total)
+            : o.total,
+          specialInstructions: payload.specialInstructions || payload.order_notes || o.specialInstructions,
           updatedAt: payload.updatedAt || payload.updated_at || new Date().toISOString(),
         }
       }),
     }))
+
+    if (payload.isAddon || payload.is_addon) {
+      toast.info(`Dishes Added to Order #${payload.orderNumber || payload.id}`, {
+        description: `Table ${payload.tableNumber || '00'} added more dishes. Bill updated.`,
+      })
+    }
 
     if (mappedStatus === 'Completed' || mappedStatus === 'Cancelled') {
       const order = useOrderStore.getState().orders.find((o) => o.id === payload.id)
