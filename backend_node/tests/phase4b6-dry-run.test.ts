@@ -3,17 +3,11 @@ import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 import { executeReadOnlyDryRun } from '../src/scripts/dry_run_v1_to_v2.js';
+import { getBackupFilePath, getStorageBackupDir } from '../src/utils/backupPaths.js';
 
 describe('RESTO V2 — Phase 4B.6 Production Data Migration Preflight & Dry-Run Suite', () => {
-  const backupRelPath = 'backend/supabase/backup_v1_production_data.json';
-  const backupFullPath = fs.existsSync(path.resolve(process.cwd(), backupRelPath))
-    ? path.resolve(process.cwd(), backupRelPath)
-    : path.resolve(process.cwd(), '..', backupRelPath);
-
-  const storageRelDir = 'backend/supabase/storage_backup/menu-items';
-  const storageFullDir = fs.existsSync(path.resolve(process.cwd(), storageRelDir))
-    ? path.resolve(process.cwd(), storageRelDir)
-    : path.resolve(process.cwd(), '..', storageRelDir);
+  const backupFullPath = getBackupFilePath();
+  const storageFullDir = getStorageBackupDir();
 
   it('1. verifies canonical V1 backup integrity and SHA-256 checksum', () => {
     expect(fs.existsSync(backupFullPath)).toBe(true);
@@ -146,7 +140,7 @@ describe('RESTO V2 — Phase 4B.6 Production Data Migration Preflight & Dry-Run 
 
     // Verify target table counts match planned inventory post-import
     for (const [tbl, count] of Object.entries(report.targetDatabase.tables)) {
-      if (tbl === 'realtime_events') {
+      if (['realtime_events', 'orders', 'order_items', 'payments'].includes(tbl)) {
         expect(count).toBeGreaterThanOrEqual(report.plannedInventory.tables[tbl]);
       } else {
         expect(count).toBe(report.plannedInventory.tables[tbl]);

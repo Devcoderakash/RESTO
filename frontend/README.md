@@ -141,19 +141,19 @@ npm install
 ```
 
 ### 3. Start the backend and configure its Supabase credentials
-Follow the setup and migration instructions in [`../backend/README.md`](../backend/README.md). The customer application requires a running backend and does not fall back to local demo orders or menu data.
+Follow the setup and migration instructions in [`../backend_node/README.md`](../backend_node/README.md). The customer application requires a running backend and does not fall back to local demo orders or menu data.
 
 ### 4. Start Vite Development Server
 ```bash
 npm run dev
 ```
-Open [http://127.0.0.1:5173/?table=07](http://127.0.0.1:5173/?table=07) in your browser.
+Open [http://127.0.0.1:5180/?table=07](http://127.0.0.1:5180/?table=07) in your browser.
 
 ### 5. Production Build
 ```bash
 npm run build
 ```
 
-For backend endpoint details, migrations, demo seed data, and all-app startup instructions, see [`../backend/README.md`](../backend/README.md).
+For backend endpoint details, migrations, and all-app startup instructions, see [`../backend_node/README.md`](../backend_node/README.md).
 4. **Reviews (`src/components/reviews/ReviewSection.tsx`):**
    - Persist reviews directly into a PostgreSQL `reviews` table with optional photo uploads.

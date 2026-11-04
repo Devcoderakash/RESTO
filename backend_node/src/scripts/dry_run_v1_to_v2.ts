@@ -6,6 +6,7 @@ import dotenv from 'dotenv';
 import { validateDatabaseTarget } from '../utils/databaseTargetValidator.js';
 import { runMigration } from './migrate_v1_to_v2.js';
 import { runReconciliation } from './reconcile_v1_v2.js';
+import { getBackupFilePath, getStorageBackupDir } from '../utils/backupPaths.js';
 
 dotenv.config();
 
@@ -81,7 +82,7 @@ export async function executeReadOnlyDryRun(): Promise<DryRunInspectionReport> {
       tables: {},
     },
     backupFile: {
-      path: 'backend/supabase/backup_v1_production_data.json',
+      path: getBackupFilePath(),
       sha256: '',
       totalRecords: 0,
       breakdown: {},
@@ -267,7 +268,7 @@ export async function executeReadOnlyDryRun(): Promise<DryRunInspectionReport> {
   try {
     const localMigration = await runMigration({
       connectionString: localConn,
-      backupFilePath: 'backend/supabase/backup_v1_production_data.json',
+      backupFilePath: getBackupFilePath(),
       reset: true,
       expectedProjectRef: 'local-rehearsal',
       allowLocal: true,
@@ -278,8 +279,8 @@ export async function executeReadOnlyDryRun(): Promise<DryRunInspectionReport> {
 
     const localReconcile = await runReconciliation({
       connectionString: localConn,
-      backupFilePath: 'backend/supabase/backup_v1_production_data.json',
-      storageBackupDir: 'backend/supabase/storage_backup/menu-items',
+      backupFilePath: getBackupFilePath(),
+      storageBackupDir: getStorageBackupDir(),
       expectedProjectRef: 'local-rehearsal',
       allowLocal: true,
     });

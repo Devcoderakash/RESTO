@@ -9,6 +9,7 @@ import {
 import { applyMigrations } from '../src/scripts/apply_v2_migrations.js';
 import { runMigration } from '../src/scripts/migrate_v1_to_v2.js';
 import { runReconciliation } from '../src/scripts/reconcile_v1_v2.js';
+import { getBackupFilePath, getStorageBackupDir } from '../src/utils/backupPaths.js';
 
 describe('RESTO V2 — Phase 4B.3 Staging Provisioning Safety Gate Suite', () => {
   const origEnv = process.env;
@@ -251,7 +252,7 @@ describe('RESTO V2 — Phase 4B.3 Staging Provisioning Safety Gate Suite', () =>
       // 3. Restore clean baseline data using migrate:data
       const dataResult = await runMigration({
         connectionString: localConn,
-        backupFilePath: 'backend/supabase/backup_v1_production_data.json',
+        backupFilePath: getBackupFilePath(),
         reset: true,
         expectedProjectRef: 'local-rehearsal',
         allowLocal: true,
@@ -263,8 +264,8 @@ describe('RESTO V2 — Phase 4B.3 Staging Provisioning Safety Gate Suite', () =>
       // 4. Reconcile
       const reconcileReport = await runReconciliation({
         connectionString: localConn,
-        backupFilePath: 'backend/supabase/backup_v1_production_data.json',
-        storageBackupDir: 'backend/supabase/storage_backup/menu-items',
+        backupFilePath: getBackupFilePath(),
+        storageBackupDir: getStorageBackupDir(),
         expectedProjectRef: 'local-rehearsal',
         allowLocal: true,
       });

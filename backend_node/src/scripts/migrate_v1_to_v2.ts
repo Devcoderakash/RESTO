@@ -3,6 +3,7 @@ import path from 'path';
 import pg from 'pg';
 import dotenv from 'dotenv';
 import { validateDatabaseTarget } from '../utils/databaseTargetValidator.js';
+import { getBackupFilePath } from '../utils/backupPaths.js';
 
 dotenv.config();
 
@@ -567,7 +568,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const isReset = args.includes('--reset');
   const allowLocal = args.includes('--allow-local') || process.env.ALLOW_LOCAL_TARGET === 'true';
   const connStr = process.env.STAGING_DATABASE_URL || process.env.DATABASE_URL || 'postgresql://akashlodhi@localhost:5432/resto_v2_rehearsal';
-  const filePath = process.env.BACKUP_FILE || 'backend/supabase/backup_v1_production_data.json';
+  const filePath = process.env.BACKUP_FILE || getBackupFilePath();
 
   const allowPrimary =
     args.includes('--allow-primary-target') ||
