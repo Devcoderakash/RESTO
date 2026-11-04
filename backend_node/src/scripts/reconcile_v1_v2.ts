@@ -11,6 +11,16 @@ export async function runReconciliation(options: {
   storageBackupDir: string;
   schema?: string;
 }) {
+  // CRITICAL PRODUCTION SAFETY GUARD
+  const BLOCKED_PRODUCTION_PROJECT_REFS = ['zmpthsiiouukjjyrbpnz', 'krsdjcxgfnlsstjwuqlj'];
+  for (const ref of BLOCKED_PRODUCTION_PROJECT_REFS) {
+    if (options.connectionString.includes(ref)) {
+      throw new Error(
+        `CRITICAL SAFETY VIOLATION: Target connection references production project '${ref}'. Operations against production are strictly blocked.`
+      );
+    }
+  }
+
   const schema = options.schema || 'resto_v2';
   const pool = new Pool({ connectionString: options.connectionString });
   const client = await pool.connect();
@@ -241,7 +251,7 @@ export async function runReconciliation(options: {
 
 // Standalone execution
 if (import.meta.url === `file://${process.argv[1]}`) {
-  const connStr = process.env.DATABASE_URL || 'postgresql://akashlodhi@localhost:5432/resto_v2_rehearsal';
+  const connStr = process.env.STAGING_DATABASE_URL || process.env.DATABASE_URL || 'postgresql://akashlodhi@localhost:5432/resto_v2_rehearsal';
   const filePath = process.env.BACKUP_FILE || 'backend/supabase/backup_v1_production_data.json';
   const storageDir = process.env.STORAGE_DIR || 'backend/supabase/storage_backup/menu-items';
 

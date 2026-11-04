@@ -26,6 +26,16 @@ export async function runMigration(options: {
   dryRun?: boolean;
   reset?: boolean;
 }): Promise<MigrationSummary> {
+  // CRITICAL PRODUCTION SAFETY GUARD
+  const BLOCKED_PRODUCTION_PROJECT_REFS = ['zmpthsiiouukjjyrbpnz', 'krsdjcxgfnlsstjwuqlj'];
+  for (const ref of BLOCKED_PRODUCTION_PROJECT_REFS) {
+    if (options.connectionString.includes(ref)) {
+      throw new Error(
+        `CRITICAL SAFETY VIOLATION: Target connection references production project '${ref}'. Operations against production are strictly blocked.`
+      );
+    }
+  }
+
   const startTime = Date.now();
   const schema = options.targetSchema || 'resto_v2';
   const dryRun = Boolean(options.dryRun);
@@ -540,7 +550,7 @@ export async function runMigration(options: {
 if (import.meta.url === `file://${process.argv[1]}`) {
   const isDryRun = process.argv.includes('--dry-run');
   const isReset = process.argv.includes('--reset');
-  const connStr = process.env.DATABASE_URL || 'postgresql://akashlodhi@localhost:5432/resto_v2_rehearsal';
+  const connStr = process.env.STAGING_DATABASE_URL || process.env.DATABASE_URL || 'postgresql://akashlodhi@localhost:5432/resto_v2_rehearsal';
   const filePath = process.env.BACKUP_FILE || 'backend/supabase/backup_v1_production_data.json';
 
   console.log(`\n======================================================`);

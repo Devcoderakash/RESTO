@@ -24,6 +24,28 @@ export async function applyMigrations(options: {
     triggerExists: boolean;
   };
 }> {
+  // CRITICAL PRODUCTION SAFETY GUARD
+  const BLOCKED_PRODUCTION_PROJECT_REFS = ['zmpthsiiouukjjyrbpnz', 'krsdjcxgfnlsstjwuqlj'];
+  for (const ref of BLOCKED_PRODUCTION_PROJECT_REFS) {
+    if (options.connectionString.includes(ref)) {
+      throw new Error(
+        `CRITICAL SAFETY VIOLATION: Target connection references production project '${ref}'. Operations against production are strictly blocked.`
+      );
+    }
+  }
+
+  // STRICT ROLLBACK SAFETY GUARD
+  if (options.rollback) {
+    const isLocal =
+      options.connectionString.includes('localhost') ||
+      options.connectionString.includes('127.0.0.1');
+    if (!isLocal && !process.env.CONFIRM_STAGING_ROLLBACK) {
+      throw new Error(
+        `ROLLBACK BLOCKED: Remote database rollback requires explicit confirmation via CONFIRM_STAGING_ROLLBACK=true environment variable.`
+      );
+    }
+  }
+
   const pool = new Pool({ connectionString: options.connectionString });
   const client = await pool.connect();
 
@@ -160,3 +182,4 @@ if (process.argv[1]?.includes('apply_v2_migrations')) {
       process.exit(1);
     });
 }
+
